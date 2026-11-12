@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>РФ ТВ — Редактор каналов</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } }
+</script>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #090b10; color: #fff; font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+    .glass { background: rgba(17,22,34,0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
+    
+    .group-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.03); transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #94a3b8; }
+    .group-item:hover { background: rgba(255,255,255,0.03); color: #fff; }
+    .group-item.active { background: linear-gradient(90deg, rgba(59,130,246,0.15) 0%, transparent 100%); border-left: 3px solid #3b82f6; color: #fff; font-weight: 600; }
+
+    .channel-item { padding: 10px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.15s; display: flex; align-items: center; gap: 12px; }
+    .channel-item:hover { background: rgba(255,255,255,0.03); }
+    .channel-item.active { background: rgba(59,130,246,0.1); border-left: 3px solid #3b82f6; }
+
+    .tool-btn { height: 40px; padding: 0 16px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 10px; background: rgba(255,255,255,0.05); color: #93c5fd; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .tool-btn:hover { background: rgba(59,130,246,0.2); color: #fff; border-color: #3b82f6; transform: translateY(-1px); }
+    .tool-btn.icon-only { width: 40px; padding: 0; }
+
+    .input-box { width: 100%; background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #fff; outline: none; transition: border 0.2s; }
+    .input-box:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+    
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 16px; }
+</style>
+</head>
+<body>
+
+<!-- ===== ВЕРХНЯЯ ПАНЕЛЬ ===== -->
+<header class="glass w-full flex items-center justify-between px-5 py-3 shrink-0 z-20 border-b border-white/5">
+    <div class="flex items-center gap-4">
+        <!-- Логотип -->
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center text-white font-black shadow-lg shadow-blue-600/30 text-xs">РФ</div>
+            <div class="hidden sm:block">
+                <div class="text-sm font-bold tracking-wider">РФ ТВ <span class="text-blue-400">IPTV</span></div>
+                <div class="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Редактор</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="flex items-center gap-2">
+        <!-- Добавить канал -->
+        <button class="tool-btn bg-emerald-600/20 border-emerald-500/30 text-emerald-400 hover:bg-emerald-600 hover:text-white" onclick="openEdit(-1)">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <span class="hidden md:inline">Добавить</span>
+        </button>
+        
+        <button class="tool-btn icon-only" onclick="document.getElementById('fileInput').click()" title="Загрузить файл M3U">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        </button>
+        <input type="file" id="fileInput" accept=".m3u,.m3u8,.txt" class="hidden">
+        
+        <button class="tool-btn icon-only" onclick="exportM3U()" title="Скачать плейлист">
+            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        </button>
+        
+        <button class="tool-btn icon-only" onclick="clearAll()" title="Очистить всё" style="color: #f87171;">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </button>
+    </div>
+</header>
+
+<!-- ===== ОСНОВНОЙ ЭКРАН ===== -->
+<main class="flex-1 flex overflow-hidden">
+    <div class="w-56 bg-[#0a0f18] border-r border-white/5 flex flex-col shrink-0">
+        <div class="p-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 bg-white/5 flex justify-between items-center">
+            <span>Группы</span>
+        </div>
+        <div id="groupList" class="flex-1 overflow-y-auto"></div>
+    </div>
+
+    <div class="flex-1 flex flex-col min-w-[300px] bg-[#090b10]">
+        <div class="p-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 bg-white/5 flex justify-between items-center">
+            <span>Список каналов</span>
+            <span id="countLabel" class="bg-white/10 px-2 py-0.5 rounded-full text-white">0</span>
+        </div>
+        <div id="channelList" class="flex-1 overflow-y-auto"></div>
+    </div>
+</main>
+
+<!-- ===== МОДАЛКА РЕДАКТИРОВАНИЯ / ДОБАВЛЕНИЯ ===== -->
+<div id="editModal" class="modal-overlay">
+    <div class="glass w-full max-w-md rounded-2xl p-6 shadow-2xl animate-fade" style="animation: scaleIn 0.2s ease-out;">
+        <div class="flex justify-between items-center mb-5 border-b border-white/10 pb-3">
+            <h3 id="modalTitle" class="font-bold text-lg text-white">Редактирование канала</h3>
+            <button onclick="closeEdit()" class="text-slate-400 hover:text-white cursor-pointer text-lg">✕</button>
+        </div>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">Название канала</label>
+                <input type="text" id="editName" class="input-box font-bold" placeholder="Например: Первый канал">
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">Группа (Категория)</label>
+                <input type="text" id="editGroup" class="input-box" placeholder="Например: Русские">
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">Ссылка на поток (URL)</label>
+                <input type="text" id="editUrl" class="input-box font-mono text-xs" placeholder="https://.../index.m3u8">
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">Ссылка на логотип</label>
+                <input type="text" id="editLogo" class="input-box font-mono text-xs" placeholder="https://.../logo.png">
+            </div>
+        </div>
+        
+        <div class="mt-6 flex gap-3">
+            <button id="btnSave" onclick="saveChannel()" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-600/20 transition-all">Сохранить</button>
+            <button id="btnDelete" onclick="deleteChannel()" class="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold text-sm rounded-xl transition-all">Удалить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let channels = [];
+    let groups = new Set();
+    let activeGroup = 'Все';
+    let activeIdx = -1;
+
+    // Запуск
+    window.onload = () => {
+        loadData();
+        renderGroups();
+        renderChannels();
+    };
+
+    function loadData() {
+        const saved = localStorage.getItem('rftv_editor_pro');
+        if (saved) {
+            channels = JSON.parse(saved);
+        } else {
+            channels = [
+                { name: 'Первый канал HD', url: 'https://vgtrkregion-reg.cdnvideo.ru/vgtrk/0/russia1-hd/1080p.m3u8', group: 'Русские', logo: '' },
+                { name: 'Россия 24', url: 'https://vgtrkregion-reg.cdnvideo.ru/vgtrk/0/russia24-hd/index.m3u8', group: 'Новости', logo: '' },
+                { name: 'Матч ТВ', url: 'https://vgtrkregion-reg.cdnvideo.ru/vgtrk/0/matchtv-hd/index.m3u8', group: 'Спорт', logo: '' }
+            ];
+        }
+        updateGroupsList();
+    }
+
+    function saveData() {
+        localStorage.setItem('rftv_editor_pro', JSON.stringify(channels));
+    }
+
+    function updateGroupsList() {
+        groups.clear();
+        groups.add('Все');
+        channels.forEach(c => { if (c.group) groups.add(c.group); });
+    }
+
+    function renderGroups() {
+        const container = document.getElementById('groupList');
+        container.innerHTML = Array.from(groups).map(g => {
+            const isActive = activeGroup === g;
+            const count = g === 'Все' ? channels.length : channels.filter(c => c.group === g).length;
+            return `<div class="group-item ${isActive ? 'active' : ''}" onclick="setGroup('${g}')">
+                <span>${g}</span>
+                <span class="text-[10px] font-mono opacity-50">${count}</span>
+            </div>`;
+        }).join('');
+    }
+
+    function setGroup(g) {
+        activeGroup = g;
+        renderGroups();
+        renderChannels();
+    }
+
+    function renderChannels() {
+        const container = document.getElementById('channelList');
+        let filtered = channels.map((c, i) => ({...c, idx: i}));
+        
+        if (activeGroup !== 'Все') {
+            filtered = filtered.filter(c => c.group === activeGroup);
+        }
+
+        document.getElementById('countLabel').textContent = filtered.length;
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="p-10 text-center text-slate-500 text-sm">В этой группе нет каналов. Нажмите "Добавить" вверху.</div>';
+            return;
+        }
+
+        container.innerHTML = filtered.map(c => {
+            const isActive = c.idx === activeIdx;
+            const logo = c.logo ? `<img src="${c.logo}" class="w-8 h-8 rounded object-contain bg-white p-0.5 border border-white/10" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">` : '';
+            const fallback = `<div class="w-8 h-8 rounded bg-[#1e293b] text-blue-400 font-bold flex items-center justify-center text-xs border border-white/5" style="${c.logo ? 'display:none' : 'display:flex'}">${c.name.charAt(0).toUpperCase()}</div>`;
+            
+            return `<div class="channel-item group ${isActive ? 'active' : ''}" onclick="selectChannel(${c.idx})" ondblclick="openEdit(${c.idx})">
+                ${logo}${fallback}
+                <div class="min-w-0 flex-1">
+                    <div class="font-bold text-sm text-white truncate">${c.name}</div>
+                    <div class="text-[10px] text-slate-400 truncate mt-0.5">${c.group}</div>
+                </div>
+                <div class="text-xs text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity pr-2">✎ Ред.</div>
+            </div>`;
+        }).join('');
+    }
+
+    function selectChannel(idx) {
+        activeIdx = idx;
+        renderChannels();
+    }
+
+    function openEdit(idx) {
+        activeIdx = idx;
+        
+        if (idx === -1) {
+            // Добавление нового
+            document.getElementById('modalTitle').textContent = 'Новый канал';
+            document.getElementById('editName').value = '';
+            document.getElementById('editGroup').value = activeGroup === 'Все' ? '' : activeGroup;
+            document.getElementById('editUrl').value = '';
+            document.getElementById('editLogo').value = '';
+            document.getElementById('btnDelete').style.display = 'none';
+        } else {
+            // Редактирование
+            const c = channels[idx];
+            document.getElementById('modalTitle').textContent = 'Редактирование канала';
+            document.getElementById('editName').value = c.name || '';
+            document.getElementById('editGroup').value = c.group || '';
+            document.getElementById('editUrl').value = c.url || '';
+            document.getElementById('editLogo').value = c.logo || '';
+            document.getElementById('btnDelete').style.display = 'block';
+        }
+        
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function closeEdit() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    function saveChannel() {
+        const name = document.getElementById('editName').value.trim();
+        const group = document.getElementById('editGroup').value.trim() || 'Разное';
+        const url = document.getElementById('editUrl').value.trim();
+        const logo = document.getElementById('editLogo').value.trim();
+
+        if (!name) return alert('Введите название канала');
+        if (!url) return alert('Введите ссылку на поток');
+
+        if (activeIdx === -1) {
+            // Создаем новый
+            channels.push({ name, group, url, logo });
+            // Чтобы сразу перейти на него
+            activeIdx = channels.length - 1;
+        } else {
+            // Обновляем существующий
+            channels[activeIdx] = { name, group, url, logo };
+        }
+        
+        saveData();
+        updateGroupsList();
+        renderGroups();
+        renderChannels();
+        closeEdit();
+    }
+
+    function deleteChannel() {
+        if (activeIdx === -1) return;
+        if (!confirm('Удалить этот канал?')) return;
+        channels.splice(activeIdx, 1);
+        activeIdx = -1;
+        saveData();
+        updateGroupsList();
+        renderGroups();
+        renderChannels();
+        closeEdit();
+    }
+
+    function exportM3U() {
+        if (channels.length === 0) return alert('Список пуст');
+        let m3u = '#EXTM3U\n';
+        channels.forEach(c => {
+            let ext = `#EXTINF:-1 tvg-name="${c.name}"`;
+            if (c.logo) ext += ` tvg-logo="${c.logo}"`;
+            if (c.group) ext += ` group-title="${c.group}"`;
+            ext += `,${c.name}`;
+            m3u += `${ext}\n${c.url}\n`;
+        });
+        const blob = new Blob([m3u], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'rftv_playlist.m3u';
+        a.click();
+    }
+
+    function clearAll() {
+        if (!confirm('Удалить все каналы?')) return;
+        channels = [];
+        saveData();
+        updateGroupsList();
+        renderGroups();
+        renderChannels();
+    }
+
+    // Загрузка M3U
+    document.getElementById('fileInput').onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const lines = ev.target.result.split(/\r?\n/);
+            let name = '', group = '', logo = '', count = 0;
+            
+            for (const l of lines) {
+                const t = l.trim();
+                if (!t) continue;
+                if (t.startsWith('#EXTINF:')) {
+                    const gm = t.match(/group-title="([^"]*)"/i); group = gm ? gm[1] : 'Разное';
+                    const lm = t.match(/tvg-logo="([^"]*)"/i); logo = lm ? lm[1] : '';
+                    const ci = t.lastIndexOf(','); name = ci !== -1 ? t.slice(ci+1).trim() : 'Без названия';
+                } else if (!t.startsWith('#') && /^https?:\/\//i.test(t)) {
+                    channels.push({ name, url: t, group, logo });
+                    count++;
+                    name = ''; group = ''; logo = '';
+                }
+            }
+            if (count > 0) {
+                saveData();
+                updateGroupsList();
+                renderGroups();
+                renderChannels();
+                alert(`Успешно загружено: ${count} каналов!`);
+            } else {
+                alert('Ссылки не найдены в файле');
+            }
+            e.target.value = '';
+        };
+        reader.readAsText(file);
+    };
+</script>
+
+<style>
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+</style>
+</body>
+</html>
