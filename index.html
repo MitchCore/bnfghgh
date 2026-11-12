@@ -34,7 +34,7 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
 @keyframes spin { 100% { transform: rotate(360deg); } }
 .spinner-ring { width: 50px; height: 50px; border: 4px solid #1e293b; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
 
-/* Оптимизация списка каналов */
+/* Оптимизация */
 .channel-card { content-visibility: auto; contain-intrinsic-size: 72px; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -43,7 +43,6 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
 .osd-hidden { opacity: 0; pointer-events: none; }
 .osd-visible { opacity: 1; pointer-events: auto; }
 
-/* Избранное */
 .fav-btn.active { color: #fbbf24; }
 </style>
 </head>
@@ -51,7 +50,8 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
 
 <!-- ===== ВИДЕО ===== -->
 <div id="playerContainer" class="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
-    <video id="videoPlayer" class="w-full h-full object-contain" playsinline autoplay muted preload="auto" crossorigin="anonymous"></video>
+    <!-- Атрибут muted убран, чтобы пробовать включать со звуком -->
+    <video id="videoPlayer" class="w-full h-full object-contain" playsinline autoplay preload="auto" crossorigin="anonymous"></video>
 
     <!-- Экран загрузки -->
     <div id="loaderOverlay" class="absolute inset-0 bg-black flex flex-col items-center justify-center z-30 transition-opacity duration-300">
@@ -94,9 +94,13 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
                 <span class="w-2 h-2 rounded-full bg-emerald-400 live-dot"></span> Онлайн
             </div>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
             <button id="openQualityMenuBtn" type="button" class="glass-btn px-4 py-2.5 rounded-xl text-white text-xs font-semibold cursor-pointer">
                 ⚙️ Качество
+            </button>
+            <!-- Кнопка Инфо (кружочек) -->
+            <button id="openInfoBtn" type="button" class="glass-btn w-10 h-10 rounded-full flex items-center justify-center text-white font-serif italic text-lg cursor-pointer" title="Информация">
+                i
             </button>
         </div>
     </header>
@@ -173,6 +177,44 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
     <div id="qualityList" class="p-2 max-h-64 overflow-y-auto space-y-1"><div class="text-xs text-slate-500 text-center py-2">Нет уровней</div></div>
 </div>
 
+<!-- ===== МОДАЛКА ИНФО ===== -->
+<div id="infoModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="glass w-full max-w-sm rounded-3xl border border-white/15 shadow-2xl overflow-hidden flex flex-col">
+        <div class="p-5 border-b border-white/10 flex items-center justify-between bg-white/5">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-serif italic text-lg">i</div>
+                <h3 class="text-lg font-bold text-white">О плеере</h3>
+            </div>
+            <button id="closeInfoBtn" class="glass-btn p-2 rounded-xl text-slate-300 cursor-pointer">✕</button>
+        </div>
+        <div class="p-6 space-y-4">
+            <div class="flex flex-col items-center justify-center py-2">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center text-white font-black text-2xl shadow-xl mb-3">РФ</div>
+                <div class="text-lg font-bold">РФ ТВ <span class="text-blue-400">IPTV</span></div>
+                <div class="text-xs text-slate-400 mt-1">Версия 2.0</div>
+            </div>
+            
+            <div class="bg-black/30 rounded-xl p-4 border border-white/5 space-y-3 text-sm">
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400">Создано:</span>
+                    <span class="text-white font-mono">12.11.2026</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400">Ваш регион:</span>
+                    <span id="infoRegion" class="text-emerald-400 font-medium">Определение...</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400">Текущее время:</span>
+                    <span id="infoTime" class="text-white font-mono">--:--</span>
+                </div>
+            </div>
+        </div>
+        <div class="p-4 border-t border-white/10 bg-white/5 text-center">
+            <button id="closeInfoFooterBtn" class="glass-btn px-6 py-2.5 rounded-xl text-white text-sm font-bold w-full">Закрыть</button>
+        </div>
+    </div>
+</div>
+
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
@@ -213,7 +255,6 @@ const ls = { get(k,d){ try { const v = localStorage.getItem(k); return v ? JSON.
 // ===== КЛАССИФИКАЦИЯ =====
 function classifyChannel(name, group) {
     const f = (name + ' ' + group).toLowerCase();
-    // Детектив -> Кино (чтобы не попадал в Детские)
     if (/детектив|кино|фильм|сериал|cinema|movie|боевик|триллер|ужасы|фантастика|драма|комедия/i.test(f)) return 'Кино';
     if (/мульт|сказк|kids|cartoon|детск|карусел|смешарики|маша/i.test(f)) return 'Детские';
     if (/спорт|матч|футбол|хоккей|бокс|sport|football/i.test(f)) return 'Спорт';
@@ -268,13 +309,11 @@ async function loadPlaylists() {
         S.channels = channels.map((c,i)=>({ ...c, num: i+1 }));
         renderCats(); renderList();
         
-        // Автовключение Первого
         let startIdx = 0;
         const firstIdx = S.channels.findIndex(c => /первый|1 канал|channel one/i.test(c.name));
         if (firstIdx !== -1) startIdx = firstIdx;
         playChannel(startIdx);
         
-        // Фоновая загрузка
         loadSecondary();
     } catch(e) {
         $('syncStatusText').innerHTML = `<span class="w-2 h-2 rounded-full bg-red-400"></span>Ошибка`;
@@ -357,23 +396,20 @@ function renderList() {
     requestAnimationFrame(() => { container.innerHTML = html; });
 }
 
-// ===== ВОСПРОИЗВЕДЕНИЕ =====
+// ===== ВОСПРОИЗВЕДЕНИЕ И АВТО-ЗВУК =====
 function playChannel(idx) {
     if (idx < 0 || idx >= S.channels.length) return;
     const ch = S.channels[idx];
     S.idx = idx;
     
-    // 1. Мгновенно обновляем UI
     updateChannelUI(ch);
     
-    // 2. Показываем лоадер
     $('errorOverlay').classList.add('hidden');
     $('loaderOverlay').classList.remove('hidden');
     $('loaderText').textContent = `Загрузка: ${ch.name}`;
     $('loaderSubText').textContent = 'Соединение...';
     if (S.sidebar) toggleSidebar(false);
     
-    // 3. Подключаемся
     if (S.hls) { try { S.hls.destroy(); } catch(e){} S.hls = null; }
     video.pause();
     video.removeAttribute('src');
@@ -417,6 +453,32 @@ function playChannel(idx) {
     }
 }
 
+// ФУНКЦИЯ АВТО-ЗВУКА
+function tryPlay() {
+    // 1. Снимаем mute (пробуем включить со звуком)
+    video.muted = false; 
+    updateMute();
+    
+    const p = video.play();
+    if (p && p.catch) {
+        p.catch(() => {
+            // 2. Если браузер заблокировал звук, включаем mute и запускаем
+            video.muted = true; 
+            updateMute();
+            video.play().catch(() => {});
+            showToast('Нажмите на экран для включения звука');
+            
+            // 3. Включаем звук при первом клике куда угодно
+            const unmute = () => {
+                video.muted = false;
+                updateMute();
+                document.removeEventListener('click', unmute);
+            };
+            document.addEventListener('click', unmute);
+        });
+    }
+}
+
 function updateChannelUI(ch) {
     $('currentChannelNumber').textContent = '#' + String(ch.num).padStart(2, '0');
     $('currentChannelName').textContent = ch.name;
@@ -438,11 +500,6 @@ function updateResolution(levels) {
     if (S.hls) S.hls.currentLevel = best;
     const h = levels[best]?.height;
     if (h) $('currentStreamResolution').textContent = `${h}p`;
-}
-
-function tryPlay() {
-    const p = video.play();
-    if (p && p.catch) p.catch(() => { video.muted = true; updateMute(); video.play().catch(() => {}); });
 }
 
 function handleFail(ch) {
@@ -502,7 +559,12 @@ function toggleMute() { video.muted = !video.muted; updateMute(); }
 function updateMute() { $('volHighIcon').classList.toggle('hidden', video.muted); $('volMuteIcon').classList.toggle('hidden', !video.muted); }
 
 let toastT;
-function toast(msg) { $('toastMessage').textContent = msg; $('toastNotification').classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => $('toastNotification').classList.add('hidden'), 2500); }
+function showToast(msg) { 
+    $('toastMessage').textContent = msg; 
+    $('toastNotification').classList.remove('hidden'); 
+    clearTimeout(toastT); 
+    toastT = setTimeout(() => $('toastNotification').classList.add('hidden'), 4000); 
+}
 
 function showOsd() {
     $('osdWrapper').classList.remove('osd-hidden');
@@ -511,7 +573,7 @@ function showOsd() {
     S.osdT = setTimeout(() => { if (!video.paused) { $('osdWrapper').classList.add('osd-hidden'); $('osdWrapper').classList.remove('osd-visible'); } }, 5000);
 }
 
-// Привязка
+// Привязка кнопок
 $('toggleSidebarBtn').onclick = () => toggleSidebar();
 $('closeSidebarBtn').onclick = () => toggleSidebar(false);
 $('openSidebarFromErrorBtn').onclick = () => { $('errorOverlay').classList.add('hidden'); toggleSidebar(true); };
@@ -535,6 +597,21 @@ $('qualityList').addEventListener('click', (e) => {
     S.hls.currentLevel = parseInt(btn.dataset.level, 10);
     $('qualityMenu').classList.add('hidden');
 });
+
+// ===== ИНФО МОДАЛКА =====
+$('openInfoBtn').onclick = () => {
+    // Определяем регион и время
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    $('infoRegion').textContent = tz || 'Неизвестно';
+    
+    const now = new Date();
+    $('infoTime').textContent = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    $('infoModal').classList.remove('hidden');
+};
+
+$('closeInfoBtn').onclick = () => $('infoModal').classList.add('hidden');
+$('closeInfoFooterBtn').onclick = () => $('infoModal').classList.add('hidden');
 
 // Видео события
 video.addEventListener('playing', () => {
