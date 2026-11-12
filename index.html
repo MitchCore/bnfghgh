@@ -36,11 +36,6 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
 .osd-visible { opacity: 1; pointer-events: auto; }
 .fav-btn.active { color: #fbbf24; }
 
-/* Специфичные стили для статусов */
-.status-ok { border-left: 3px solid #10b981 !important; }
-.status-error { border-left: 3px solid #ef4444 !important; }
-.status-loading { border-left: 3px solid #f59e0b !important; }
-
 /* Адаптив для Smart TV и приставок (Крупный шрифт и фокус) */
 body.device-tv .glass-btn { padding: 1rem 1.5rem; font-size: 1.1rem; }
 body.device-tv .channel-card { padding: 1.2rem; }
@@ -55,6 +50,15 @@ body.maximized-video #osdWrapper { opacity: 0; pointer-events: none; }
 </style>
 </head>
 <body class="relative w-screen h-screen overflow-hidden select-none">
+
+<!-- ===== БЛОКИРОВЩИК ДЛЯ ТЕЛЕФОНОВ ===== -->
+<div id="mobileBlocker" class="hidden fixed inset-0 z-[9999] bg-[#05070a] flex-col items-center justify-center text-center p-6" style="display: none;">
+    <div class="w-24 h-24 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(239,68,68,0.2)]">
+        <svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+    </div>
+    <h1 class="text-3xl font-black text-white mb-3">Уходите отсюда</h1>
+    <p class="text-base text-slate-400 max-w-sm">На телефоне плеер не поддерживается. Пожалуйста, используйте ПК, ноутбук или ТВ-приставку для просмотра.</p>
+</div>
 
 <!-- ===== ВИДЕО ===== -->
 <div id="playerContainer" class="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
@@ -246,7 +250,7 @@ body.maximized-video #osdWrapper { opacity: 0; pointer-events: none; }
             <div class="flex flex-col items-center justify-center py-2">
                 <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center text-white font-black text-2xl shadow-xl mb-3">РФ</div>
                 <div class="text-lg font-bold">РФ ТВ <span class="text-blue-400">IPTV</span></div>
-                <div class="text-xs text-slate-400 mt-1">Версия 6.4 (ТВОЕ ТВ)</div>
+                <div class="text-xs text-slate-400 mt-1">Версия 7.0 (Поддержка приставок)</div>
             </div>
             <div class="bg-black/30 rounded-xl p-4 border border-white/5 space-y-3 text-sm">
                 <div class="flex justify-between items-center"><span class="text-slate-400">Устройство:</span><span id="infoDevice" class="text-white font-mono">ПК / Телефон</span></div>
@@ -269,21 +273,47 @@ body.maximized-video #osdWrapper { opacity: 0; pointer-events: none; }
 'use strict';
 const $ = id => document.getElementById(id);
 const PAGE = 60;
-const CACHE_KEY = 'rftv_mega_cache_v14';
+const CACHE_KEY = 'rftv_mega_cache_v16';
 
-// ===== ОПРЕДЕЛЕНИЕ УСТРОЙСТВА =====
-const isTV = /SmartTV|Tizen|WebOS|AppleTV|AndroidTV|GoogleTV|Roku|Box|TV/i.test(navigator.userAgent);
+// ===== ОПРЕДЕЛЕНИЕ УСТРОЙСТВА (БЛОКИРОВКА ТЕЛЕФОНОВ, ПОДДЕРЖКА ПРИСТАВОК) =====
+const isTV = /SmartTV|Tizen|WebOS|AppleTV|AndroidTV|GoogleTV|Roku|Box|TV|AFT/i.test(navigator.userAgent);
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && !isTV;
 
-if (isTV) {
+if (isMobile) {
+    const blocker = document.getElementById('mobileBlocker');
+    blocker.classList.remove('hidden');
+    blocker.style.display = 'flex';
+} else if (isTV) {
     document.body.classList.add('device-tv');
-    $('infoDevice').textContent = 'Smart TV / Приставка';
-} else if (isMobile) {
-    $('infoDevice').textContent = 'Смартфон / Планшет';
-    setTimeout(() => toggleSidebar(false), 100);
+    const infoDevice = document.getElementById('infoDevice');
+    if (infoDevice) infoDevice.textContent = 'Smart TV / Приставка';
 } else {
-    $('infoDevice').textContent = 'Компьютер / Ноутбук';
+    const infoDevice = document.getElementById('infoDevice');
+    if (infoDevice) infoDevice.textContent = 'Компьютер / Ноутбук';
 }
+
+// Если телефон, дальше не инициализируем (блокируем доступ)
+if (!isMobile) {
+
+// ===== ПОЛЬЗОВАТЕЛЬСКИЕ КАНАЛЫ =====
+const CUSTOM_CHANNELS = [
+    {
+        id: 'custom-perec',
+        name: 'Перец',
+        url: 'http://178.124.141.167:1935/liveedge/PEREC_360p.stream/playlist.m3u8',
+        category: 'Русские',
+        logo: '',
+        checked: true, working: true, status: 'ok'
+    },
+    {
+        id: 'custom-international',
+        name: 'Интернационал (Первый)',
+        url: 'http://87.246.54.249:8085/Pervii/mpegts',
+        category: 'Русские',
+        logo: '',
+        checked: true, working: true, status: 'ok'
+    }
+];
 
 // ===== VOD ФИЛЬМЫ (MP4) =====
 const VOD_MOVIES = [
@@ -310,20 +340,13 @@ const PRIMARY_SOURCE = { name: 'ngrch', url: 'https://ngrch.github.io/iptv/ru.m3
 
 const generateSecondarySources = () => {
     let list = [
-        // Добавлен ТВОЕ ТВ
         { name: 'ТВОЕ ТВ', url: 'https://m3u.su/tvoe', cat: 'Русские' },
-        
-        // Основные HD Федеральные
         { name: 'IPTV-org RU', url: 'https://iptv-org.github.io/iptv/countries/ru.m3u', cat: 'Русские' },
         { name: 'Smotrim HD', url: 'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/ru_smotrim.m3u', cat: 'Русские' },
         { name: 'DropTV Mega', url: 'https://raw.githubusercontent.com/IPTVRU2026/IPTVMIR/main/IPTV_MEGA_PLAYLIST.m3u', cat: 'Все' },
         { name: 'Free-TV', url: 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8', cat: 'Все' },
-        
-        // Спорт
         { name: 'Sports (800+)', url: 'https://iptv-org.github.io/iptv/categories/sports.m3u', cat: 'Спорт' },
         { name: 'World Cup 2026', url: 'http://82.156.243.185:33389/fwc.m3u', cat: 'Чемпионаты мира' },
-        
-        // Остальные
         { name: 'Romaxa55', url: 'https://romaxa55.github.io/world_ip_tv/output/index.m3u', cat: 'Все' },
         { name: 'Cypher', url: 'https://raw.githubusercontent.com/Cypher1984GIT/Canales-IPTV/main/canales.m3u', cat: 'Все' },
         { name: 'Shovo', url: 'https://raw.githubusercontent.com/shovo127/IPTV-By-Shovo/main/playlist.m3u', cat: 'Все' },
@@ -510,8 +533,8 @@ function parseM3U(text, sourceCat) {
 }
 
 async function initPlaylists() {
-    // 1. Фильмы VOD
-    S.channels = [...VOD_MOVIES];
+    // 1. Кастомные каналы + фильмы
+    S.channels = [...CUSTOM_CHANNELS, ...VOD_MOVIES];
 
     // 2. Кэш
     const cached = ls.get(CACHE_KEY, null);
@@ -981,6 +1004,8 @@ window.addEventListener('keydown', showOsd);
 
 loadVideoSettings(); 
 initPlaylists();
+
+} // Конец проверки на телефон
 </script>
 </body>
 </html>
