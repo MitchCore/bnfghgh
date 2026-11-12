@@ -2,298 +2,562 @@
 <html lang="ru" class="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Установка IPTV — Мелитополь</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>РФ ТВ IPTV</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://ngrch.github.io" crossorigin>
+<link rel="preconnect" href="https://iptv-org.github.io" crossorigin>
+<link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
 <script>
 tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } }
 </script>
 <style>
-* { box-sizing: border-box; }
-body { margin: 0; background: #000; color: #fff; overflow-x: hidden; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #05070a; color: #f8fafc; overflow: hidden; font-family: 'Inter', sans-serif; }
 
-/* ===== ВЕРХНИЙ ФОН ===== */
-.bg-hero {
-    position: absolute;
-    inset: 0;
-    background-image: url('https://iptvx.one/imgz/_news_.jpg');
-    background-size: cover;
-    background-position: center;
-    z-index: 0;
-}
-.bg-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.9) 70%, #05070a 100%);
-    z-index: 1;
-}
+/* Стекло */
+.glass { background: rgba(13,17,26,.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,.08); }
+.glass-btn { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); transition: all .2s; }
+.glass-btn:hover, .glass-btn:focus { background: rgba(255,255,255,.15); border-color: rgba(96,165,250,.5); transform: scale(1.05); }
 
-/* ===== НИЖНИЙ ФОН ===== */
-.bg-bottom {
-    position: absolute;
-    inset: 0;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    z-index: 0;
-}
-.bg-bottom-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, #05070a 0%, rgba(5,7,10,0.8) 50%, #05070a 100%);
-    z-index: 1;
-}
-
-.content { position: relative; z-index: 2; }
-
-/* ===== СТЕКЛО ===== */
-.glass {
-    background: rgba(10, 14, 22, 0.7);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-.glass-hover:hover {
-    border-color: rgba(96, 165, 250, 0.4);
-    background: rgba(15, 22, 35, 0.85);
-}
-
-/* ===== ШАПКА ===== */
-.top-bar {
-    background: rgba(10, 14, 22, 0.8);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-}
+/* Скроллбар */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: rgba(100,116,139,.5); border-radius: 999px; }
+::-webkit-scrollbar-track { background: transparent; }
 
 /* Анимации */
-@keyframes pulse-dot { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.9); } }
-.dot-live { animation: pulse-dot 1.8s infinite; }
+@keyframes pulseLive { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+.live-dot { animation: pulseLive 1.8s infinite ease-in-out; }
 
-@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-.float-slow { animation: float 5s ease-in-out infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
+.spinner-ring { width: 50px; height: 50px; border: 4px solid #1e293b; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
 
-@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-.fade-up { animation: fadeUp .8s ease-out forwards; }
-.delay-1 { animation-delay: .15s; opacity: 0; }
-.delay-2 { animation-delay: .3s; opacity: 0; }
-.delay-3 { animation-delay: .45s; opacity: 0; }
-.delay-4 { animation-delay: .6s; opacity: 0; }
+/* Оптимизация списка каналов */
+.channel-card { content-visibility: auto; contain-intrinsic-size: 72px; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-.scroll-smooth { scroll-behavior: smooth; }
+/* Скрытие OSD */
+.osd-hidden { opacity: 0; pointer-events: none; }
+.osd-visible { opacity: 1; pointer-events: auto; }
+
+/* Избранное */
+.fav-btn.active { color: #fbbf24; }
 </style>
 </head>
-<body class="antialiased scroll-smooth">
+<body class="relative w-screen h-screen overflow-hidden select-none">
 
-<!-- ===== ШАПКА ===== -->
-<header class="fixed top-0 left-0 right-0 z-50 top-bar">
-    <div class="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between">
+<!-- ===== ВИДЕО ===== -->
+<div id="playerContainer" class="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
+    <video id="videoPlayer" class="w-full h-full object-contain" playsinline autoplay muted preload="auto" crossorigin="anonymous"></video>
+
+    <!-- Экран загрузки -->
+    <div id="loaderOverlay" class="absolute inset-0 bg-black flex flex-col items-center justify-center z-30 transition-opacity duration-300">
+        <div class="spinner-ring mb-6"></div>
+        <p id="loaderText" class="text-xl font-bold text-white tracking-wide">Загрузка...</p>
+        <p id="loaderSubText" class="text-sm text-slate-400 mt-2">Соединение...</p>
+    </div>
+
+    <!-- Ошибка -->
+    <div id="errorOverlay" class="hidden absolute inset-0 bg-black/95 flex flex-col items-center justify-center z-40 p-6 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mb-4 text-red-500">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">Поток недоступен</h3>
+        <p id="errorDetails" class="text-sm text-slate-400 max-w-md mb-6">Попробуйте другой канал.</p>
+        <div class="flex flex-wrap gap-3 justify-center">
+            <button id="nextChannelErrorBtn" type="button" class="glass-btn px-6 py-3 rounded-xl text-white font-semibold text-sm cursor-pointer">Следующий →</button>
+            <button id="openSidebarFromErrorBtn" type="button" class="glass-btn px-6 py-3 rounded-xl text-white font-semibold text-sm cursor-pointer">📺 Список</button>
+        </div>
+    </div>
+
+    <!-- Тосты -->
+    <div id="toastNotification" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 glass px-5 py-3 rounded-2xl z-50 border border-emerald-500/40 flex items-center gap-3">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+        <span id="toastMessage" class="text-sm font-medium text-white">Готово</span>
+    </div>
+</div>
+
+<!-- ===== OSD (Интерфейс) ===== -->
+<div id="osdWrapper" class="osd-layer absolute inset-0 z-20 flex flex-col justify-between osd-visible" style="transition: opacity .25s, pointer-events .25s;">
+
+    <!-- Верхняя панель -->
+    <header class="w-full p-4 sm:p-6 bg-gradient-to-b from-black/95 to-transparent flex items-center justify-between pointer-events-auto">
+        <div class="flex items-center gap-4">
+            <button id="toggleSidebarBtn" type="button" class="glass-btn p-3 rounded-xl text-white flex items-center gap-2 cursor-pointer">
+                <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h10"/></svg>
+                <span class="font-bold text-sm tracking-tight">РФ ТВ IPTV</span>
+            </button>
+            <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-semibold text-emerald-400">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 live-dot"></span> Онлайн
+            </div>
+        </div>
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center text-white font-black text-base shadow-lg shadow-blue-600/30">РФ</div>
-            <span class="font-bold text-base tracking-tight">РФ ТВ <span class="text-blue-400">IPTV</span></span>
+            <button id="openQualityMenuBtn" type="button" class="glass-btn px-4 py-2.5 rounded-xl text-white text-xs font-semibold cursor-pointer">
+                ⚙️ Качество
+            </button>
         </div>
-        <div class="hidden sm:flex items-center gap-2 text-xs text-slate-400">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 dot-live"></span>
-            Мелитополь · онлайн
-        </div>
-    </div>
-</header>
+    </header>
 
-<!-- ===== ГЛАВНЫЙ ЭКРАН ===== -->
-<section class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
-    <div class="bg-hero"></div>
-    <div class="bg-overlay"></div>
-
-    <div class="content max-w-5xl mx-auto px-5 py-20 text-center">
-        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-xs font-semibold text-emerald-300 mb-8 fade-up">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 dot-live"></span>
-            Мелитополь · Установка на приставки
-        </div>
-
-        <h1 class="text-4xl sm:text-6xl md:text-7xl font-black leading-[1.05] tracking-tight mb-6 fade-up delay-1">
-            Установим плеер<br>
-            на <span class="bg-gradient-to-r from-blue-400 via-cyan-300 to-indigo-400 bg-clip-text text-transparent">ТВ приставку</span><br>
-            в Мелитополе
-        </h1>
-
-        <p class="text-base sm:text-xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed fade-up delay-2">
-            Подключаем, настраиваем и запускаем IPTV на вашей приставке. Работаем по всему Мелитополю — от центра до частного сектора.
-        </p>
-
-        <div class="flex flex-wrap items-center justify-center gap-3 mb-14 fade-up delay-3">
-            <a href="#install" class="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-base shadow-2xl shadow-blue-600/40 hover:shadow-blue-600/70 hover:-translate-y-0.5 transition-all">
-                Как установить
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
-            </a>
-            <a href="#about" class="inline-flex items-center gap-2 px-8 py-4 rounded-2xl glass glass-hover text-white font-bold text-base transition-all">
-                Подробнее
-            </a>
-        </div>
-
-        <div class="grid grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto fade-up delay-4 mb-10">
-            <div class="glass rounded-2xl p-4 sm:p-5">
-                <div class="text-2xl sm:text-3xl font-extrabold text-blue-400">500+</div>
-                <div class="text-[11px] sm:text-xs text-slate-400 mt-1">Каналов</div>
+    <!-- Центральная часть -->
+    <div class="relative flex-1 flex overflow-hidden">
+        <!-- Сайдбар -->
+        <aside id="channelsSidebar" class="pointer-events-auto w-full sm:w-[380px] h-full glass border-r border-white/5 flex flex-col transition-transform duration-200 z-30">
+            <div class="p-4 border-b border-white/5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">Каналы <span id="channelsCountBadge" class="px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-300 font-semibold">0</span></h2>
+                    <button id="closeSidebarBtn" type="button" class="glass-btn p-2 rounded-lg text-slate-300 cursor-pointer">✕</button>
+                </div>
+                <input id="channelSearchInput" type="text" placeholder="Поиск..." class="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors">
+                <div id="playlistSyncStatus" class="flex items-center justify-between text-[11px] px-3 py-2 rounded-lg bg-white/5 text-slate-300">
+                    <span id="syncStatusText" class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>Загрузка...</span>
+                </div>
+                <div id="categoryTabs" class="flex flex-wrap gap-1.5"></div>
             </div>
-            <div class="glass rounded-2xl p-4 sm:p-5">
-                <div class="text-2xl sm:text-3xl font-extrabold text-emerald-400">Хорошее</div>
-                <div class="text-[11px] sm:text-xs text-slate-400 mt-1">Качество</div>
-            </div>
-            <div class="glass rounded-2xl p-4 sm:p-5">
-                <div class="text-2xl sm:text-3xl font-extrabold text-indigo-400">24/7</div>
-                <div class="text-[11px] sm:text-xs text-slate-400 mt-1">Поддержка</div>
-            </div>
-        </div>
-
-        <!-- Кнопка онлайн-плеера (встроена под статы) -->
-        <div class="flex justify-center fade-up delay-4">
-            <a href="https://rftv.c6t.ru" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-8 py-4 rounded-2xl glass glass-hover text-white font-bold text-base transition-all group">
-                <svg class="w-5 h-5 text-blue-400 group-hover:text-blue-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Смотреть онлайн
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-            </a>
-        </div>
+            <div id="channelsListContainer" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
+        </aside>
+        <div id="videoClickZone" class="flex-1 h-full pointer-events-auto cursor-pointer"></div>
     </div>
 
-    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 content float-slow">
-        <svg class="w-6 h-6 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
-    </div>
-</section>
-
-<!-- ===== О ПРЕДЛОЖЕНИИ ===== -->
-<section id="about" class="relative py-20 px-5 overflow-hidden">
-    <div class="bg-bottom" id="bg-bottom"></div>
-    <div class="bg-bottom-overlay"></div>
-
-    <div class="relative z-10 max-w-4xl mx-auto">
-        <div class="text-center mb-14">
-            <h2 class="text-3xl sm:text-4xl font-black mb-4">Что мы устанавливаем</h2>
-            <p class="text-slate-400 max-w-xl mx-auto">Полноценный IPTV-плеер прямо на вашу ТВ-приставку. Без сложных настроек и лишних подписок.</p>
-        </div>
-
-        <div class="grid sm:grid-cols-2 gap-5">
-            <div class="glass glass-hover rounded-2xl p-6 transition-all">
-                <div class="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mb-4">
-                    <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                </div>
-                <h3 class="font-bold text-lg mb-2">500+ российских каналов</h3>
-                <p class="text-sm text-slate-400">Федеральные, новостные, спортивные, детские, кино и музыкальные — все в одном месте.</p>
-            </div>
-
-            <div class="glass glass-hover rounded-2xl p-6 transition-all">
-                <div class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center mb-4">
-                    <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                </div>
-                <h3 class="font-bold text-lg mb-2">Быстрый запуск</h3>
-                <p class="text-sm text-slate-400">Каналы открываются за 1–3 секунды. Никаких зависаний и долгих загрузок.</p>
-            </div>
-
-            <div class="glass glass-hover rounded-2xl p-6 transition-all">
-                <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center mb-4">
-                    <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
-                </div>
-                <h3 class="font-bold text-lg mb-2">Качество на выбор</h3>
-                <p class="text-sm text-slate-400">От 480p до Full HD. Плеер сам подбирает максимальное качество под ваш интернет.</p>
-            </div>
-
-            <div class="glass glass-hover rounded-2xl p-6 transition-all">
-                <div class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center mb-4">
-                    <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                </div>
-                <h3 class="font-bold text-lg mb-2">Без рекламы и подписок</h3>
-                <p class="text-sm text-slate-400">Никаких баннеров, навязчивых окон и скрытых платежей. Один раз настроили — работает.</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- ===== КАК УСТАНАВЛИВАЕТСЯ ===== -->
-<section id="install" class="relative py-20 px-5 border-t border-white/5">
-    <div class="max-w-4xl mx-auto">
-        <div class="text-center mb-14">
-            <h2 class="text-3xl sm:text-4xl font-black mb-4">Как проходит установка</h2>
-            <p class="text-slate-400 max-w-xl mx-auto">Не нужно быть техническим специалистом — всё делаем сами</p>
-        </div>
-
-        <div class="space-y-4">
-            <div class="glass rounded-2xl p-5 sm:p-6 flex items-start gap-4 glass-hover transition-all">
-                <div class="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white font-extrabold text-lg shrink-0 shadow-lg shadow-blue-600/40">1</div>
-                <div class="flex-1">
-                    <h3 class="font-bold text-lg mb-1">Вы оставляете заявку</h3>
-                    <p class="text-sm text-slate-400">Связываемся с вами, уточняем модель приставки и удобное время.</p>
+    <!-- Нижняя панель -->
+    <footer class="w-full p-4 sm:p-6 bg-gradient-to-t from-black/95 to-transparent pointer-events-auto">
+        <div class="max-w-[1400px] mx-auto flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 glass p-4 rounded-2xl border border-white/10 shadow-2xl">
+            
+            <!-- Инфо о канале -->
+            <div class="flex items-center gap-4 w-full lg:w-auto shrink-0">
+                <div id="currentChannelLogo" class="w-16 h-16 rounded-xl bg-slate-800 flex items-center justify-center text-white font-extrabold text-lg shadow-inner border border-white/10 overflow-hidden shrink-0">1</div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span id="currentChannelNumber" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">#01</span>
+                        <h1 id="currentChannelName" class="text-lg font-bold text-white truncate">Загрузка...</h1>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1 text-xs text-slate-400 flex-wrap">
+                        <span id="currentChannelCategory" class="text-blue-400 font-medium">—</span>
+                        <span>•</span>
+                        <span id="currentStreamResolution" class="font-semibold text-emerald-400">Авто</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="glass rounded-2xl p-5 sm:p-6 flex items-start gap-4 glass-hover transition-all">
-                <div class="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-extrabold text-lg shrink-0 shadow-lg shadow-indigo-600/40">2</div>
-                <div class="flex-1">
-                    <h3 class="font-bold text-lg mb-1">Приезжаем и подключаем</h3>
-                    <p class="text-sm text-slate-400">Устанавливаем плеер, настраиваем каналы и проверяем стабильность работы.</p>
+            <!-- Расписание -->
+            <div class="flex-1 w-full lg:max-w-sm bg-black/40 rounded-xl p-3 border border-white/5 flex items-center justify-center h-[72px]">
+                <div class="text-sm text-slate-500 flex items-center gap-2">
+                    <svg class="w-5 h-5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    Расписание недоступно
                 </div>
             </div>
 
-            <div class="glass rounded-2xl p-5 sm:p-6 flex items-start gap-4 glass-hover transition-all">
-                <div class="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-extrabold text-lg shrink-0 shadow-lg shadow-emerald-600/40">3</div>
-                <div class="flex-1">
-                    <h3 class="font-bold text-lg mb-1">Смотрите любимые каналы</h3>
-                    <p class="text-sm text-slate-400">Показываем, как пользоваться пультом и переключать каналы. Отвечаем на вопросы.</p>
-                </div>
+            <!-- Управление -->
+            <div class="flex items-center justify-end gap-2 w-full lg:w-auto shrink-0">
+                <button id="prevChannelBtn" type="button" class="glass-btn p-3 rounded-xl text-white cursor-pointer"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                <button id="playPauseBtn" type="button" class="glass-btn p-4 rounded-xl bg-blue-600/80 hover:bg-blue-600 text-white cursor-pointer shadow-lg shadow-blue-600/20">
+                    <svg id="pauseIcon" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
+                    <svg id="playIcon" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <button id="nextChannelBtn" type="button" class="glass-btn p-3 rounded-xl text-white cursor-pointer"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+                <button id="muteToggleBtn" type="button" class="glass-btn p-3 rounded-xl text-white cursor-pointer ml-2">
+                    <svg id="volHighIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+                    <svg id="volMuteIcon" class="w-5 h-5 hidden text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg>
+                </button>
+                <button id="fullscreenBtn" type="button" class="glass-btn p-3 rounded-xl text-white cursor-pointer"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg></button>
             </div>
         </div>
-    </div>
-</section>
+    </footer>
+</div>
 
-<!-- ===== FAQ ===== -->
-<section class="relative py-20 px-5 border-t border-white/5">
-    <div class="max-w-3xl mx-auto">
-        <h2 class="text-center text-3xl sm:text-4xl font-black mb-12">Частые вопросы</h2>
-        <div class="space-y-3">
-            <details class="glass rounded-2xl p-5 group glass-hover transition-all">
-                <summary class="font-semibold cursor-pointer flex items-center justify-between">
-                    На какие приставки устанавливается?
-                    <svg class="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="text-sm text-slate-400 mt-3">На любые обычные Android-приставки (TV Box). Смарт-ТВ со встроенным Android тоже подходит.</p>
-            </details>
-            <details class="glass rounded-2xl p-5 group glass-hover transition-all">
-                <summary class="font-semibold cursor-pointer flex items-center justify-between">
-                    Нужен ли интернет?
-                    <svg class="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="text-sm text-slate-400 mt-3">Да. Для HD-каналов хватает 10 Мбит/с. Если интернет слабый — плеер сам снизит качество.</p>
-            </details>
-            <details class="glass rounded-2xl p-5 group glass-hover transition-all">
-                <summary class="font-semibold cursor-pointer flex items-center justify-between">
-                    Работаете по всему Мелитополю?
-                    <svg class="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="text-sm text-slate-400 mt-3">Да, выезжаем по всему Мелитополю: центр, микрорайоны, частный сектор, пригород.</p>
-            </details>
-            <details class="glass rounded-2xl p-5 group glass-hover transition-all">
-                <summary class="font-semibold cursor-pointer flex items-center justify-between">
-                    Каналы перестали работать — что делать?
-                    <svg class="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="text-sm text-slate-400 mt-3">В приложении есть кнопка «Обновить» — она подгружает свежие ссылки на каналы. Если не помогает — позвоните, поможем удалённо.</p>
-            </details>
-        </div>
-    </div>
-</section>
-
-<!-- ===== ФУТЕР ===== -->
-<footer class="relative py-12 px-5 border-t border-white/5 text-center">
-    <div class="flex items-center justify-center gap-3 mb-3">
-        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center text-white font-extrabold text-sm shadow-lg">РФ</div>
-        <span class="font-bold">РФ ТВ <span class="text-blue-400">IPTV</span></span>
-    </div>
-    <p class="text-xs text-slate-500">Мелитополь · Установка ТВ-приставок · <span id="year"></span></p>
-</footer>
+<!-- ===== МЕНЮ КАЧЕСТВА ===== -->
+<div id="qualityMenu" class="hidden absolute top-24 right-6 w-64 glass rounded-2xl border border-white/10 shadow-2xl z-50 overflow-hidden">
+    <div class="p-4 border-b border-white/5 bg-white/5"><div class="text-xs font-bold text-white">Качество потока</div></div>
+    <div id="qualityList" class="p-2 max-h-64 overflow-y-auto space-y-1"><div class="text-xs text-slate-500 text-center py-2">Нет уровней</div></div>
+</div>
 
 <script>
-document.getElementById('year').textContent = new Date().getFullYear();
-document.getElementById('bg-bottom').style.backgroundImage = "url('https://images.weserv.nl/?url=img.magnific.com/free-photo/top-view-retro-vhs-packaging-remote-control_23-2149854384.jpg?w=2000')";
-</script>
+'use strict';
+const $ = id => document.getElementById(id);
+const PAGE = 60;
 
+// ===== ИСТОЧНИКИ =====
+const PRIMARY_SOURCE = { name: 'ngrch', url: 'https://ngrch.github.io/iptv/ru.m3u', cat: 'Русские' };
+const SECONDARY_SOURCES = [
+    { name: 'iptv-org RU', url: 'https://iptv-org.github.io/iptv/countries/ru.m3u', cat: 'Русские' },
+    { name: 'Free-TV', url: 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8', cat: 'Все' },
+    { name: 'DropTV', url: 'https://raw.githubusercontent.com/IPTVRU2026/IPTVMIR/main/IPTV_MEGA_PLAYLIST.m3u', cat: 'Все' },
+    { name: 'kittv Kids', url: 'https://kittv.ru/detkanaly.m3u', cat: 'Детские' },
+    { name: 'kittv Movies', url: 'https://kittv.ru/films.m3u', cat: 'Кино' }
+];
+
+// ===== КАТЕГОРИИ =====
+const CATS = [
+    ['Все', 'Все', '📺'], ['Русские', 'Русские', '🇷🇺'], ['Новости', 'Новости', '📰'],
+    ['Спорт', 'Спорт', '⚽'], ['Кино', 'Кино', '🎬'], ['Детские', 'Детские', '🧸'],
+    ['Музыка', 'Музыка', '🎵'], ['Избранное', 'Избранное', '⭐']
+];
+
+// ===== СОСТОЯНИЕ =====
+const S = {
+    channels: [], favs: new Set(),
+    idx: 0, cat: 'Все', q: '', hls: null,
+    status: {}, sidebar: true, osdT: null
+};
+
+let visible = PAGE;
+const video = $('videoPlayer');
+const container = $('channelsListContainer');
+
+// ===== УТИЛИТЫ =====
+const debounce = (fn, ms) => { let t; return function(...a){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a),ms); }; };
+const ls = { get(k,d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } }, set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} } };
+
+// ===== КЛАССИФИКАЦИЯ =====
+function classifyChannel(name, group) {
+    const f = (name + ' ' + group).toLowerCase();
+    // Детектив -> Кино (чтобы не попадал в Детские)
+    if (/детектив|кино|фильм|сериал|cinema|movie|боевик|триллер|ужасы|фантастика|драма|комедия/i.test(f)) return 'Кино';
+    if (/мульт|сказк|kids|cartoon|детск|карусел|смешарики|маша/i.test(f)) return 'Детские';
+    if (/спорт|матч|футбол|хоккей|бокс|sport|football/i.test(f)) return 'Спорт';
+    if (/новост|news|вести|24|рбк|известия/i.test(f)) return 'Новости';
+    if (/муз|music|mtv|europa|хит|радио/i.test(f)) return 'Музыка';
+    return 'Русские';
+}
+
+// ===== ПАРСЕР =====
+function parseM3U(text, sourceCat) {
+    const out = [];
+    let name = '', grp = '', logo = '';
+    const isHttps = location.protocol === 'https:';
+    for (const raw of String(text||'').split(/\r?\n/)) {
+        const l = raw.trim();
+        if (!l) continue;
+        if (l.startsWith('#EXTINF:')) {
+            const gm = l.match(/group-title="([^"]*)"/i); grp = gm ? gm[1].trim() : '';
+            const lm = l.match(/tvg-logo="([^"]*)"/i); logo = lm ? lm[1] : '';
+            const ci = l.lastIndexOf(','); name = ci !== -1 ? l.slice(ci+1).trim() : '';
+            name = name.replace(/\[.*?\]|\(.*?\)/g,'').trim();
+        } else if (!l.startsWith('#') && /^https?:\/\//i.test(l)) {
+            if (isHttps && l.startsWith('http://')) { name=''; grp=''; logo=''; continue; }
+            let cat = classifyChannel(name, grp);
+            if (sourceCat === 'Детские') cat = 'Детские';
+            else if (sourceCat === 'Кино') cat = 'Кино';
+            else if (sourceCat === 'Спорт') cat = 'Спорт';
+            else if (sourceCat === 'Новости') cat = 'Новости';
+            else if (sourceCat === 'Музыка') cat = 'Музыка';
+            out.push({
+                id: 'c-'+out.length+'-'+Math.random().toString(36).slice(2,6),
+                name: name || `Канал ${out.length+1}`, url: l, logo, category: cat
+            });
+            name=''; grp=''; logo='';
+        }
+    }
+    return out;
+}
+
+// ===== ЗАГРУЗКА =====
+async function loadPlaylists() {
+    $('syncStatusText').innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>Загрузка...`;
+    try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 6000);
+        const resp = await fetch(PRIMARY_SOURCE.url, { signal: ctrl.signal });
+        clearTimeout(t);
+        if (!resp.ok) throw new Error();
+        const text = await resp.text();
+        const channels = parseM3U(text, PRIMARY_SOURCE.cat);
+        
+        S.channels = channels.map((c,i)=>({ ...c, num: i+1 }));
+        renderCats(); renderList();
+        
+        // Автовключение Первого
+        let startIdx = 0;
+        const firstIdx = S.channels.findIndex(c => /первый|1 канал|channel one/i.test(c.name));
+        if (firstIdx !== -1) startIdx = firstIdx;
+        playChannel(startIdx);
+        
+        // Фоновая загрузка
+        loadSecondary();
+    } catch(e) {
+        $('syncStatusText').innerHTML = `<span class="w-2 h-2 rounded-full bg-red-400"></span>Ошибка`;
+    }
+}
+
+async function loadSecondary() {
+    const bg = $('syncStatusText');
+    let loaded = 0;
+    await Promise.allSettled(SECONDARY_SOURCES.map(async (src) => {
+        try {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), 10000);
+            const resp = await fetch(src.url, { signal: ctrl.signal });
+            clearTimeout(t);
+            if (!resp.ok) return;
+            const text = await resp.text();
+            const channels = parseM3U(text, src.cat);
+            if (channels.length > 0) {
+                loaded++;
+                const existingUrls = new Set(S.channels.map(c => c.url));
+                channels.forEach(c => { if (!existingUrls.has(c.url)) S.channels.push(c); });
+                S.channels = S.channels.map((c,i)=>({ ...c, num: i+1 }));
+                renderCats(); renderList();
+                bg.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span>${S.channels.length} каналов (+${loaded} ист.)`;
+            }
+        } catch(e) {}
+    }));
+    bg.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span>${S.channels.length} каналов (все загружены)`;
+}
+
+// ===== ОТРИСОВКА =====
+function renderCats() {
+    $('categoryTabs').innerHTML = CATS.map(([id, label, ic]) => {
+        const active = S.cat === id;
+        let cnt = id === 'Все' ? S.channels.length : id === 'Избранное' ? S.favs.size : S.channels.filter(c => c.category === id).length;
+        return `<button type="button" data-cat="${id}" class="shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 border cursor-pointer transition-colors ${active ? 'bg-blue-600 text-white border-blue-500' : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10'}"><span>${ic}</span><span>${label}</span><span class="opacity-60">${cnt}</span></button>`;
+    }).join('');
+}
+
+function filterChannels() {
+    const q = S.q.trim().toLowerCase();
+    return S.channels.filter(c => {
+        if (S.cat !== 'Все') {
+            if (S.cat === 'Избранное') { if (!S.favs.has(c.id)) return false; }
+            else { if (c.category !== S.cat) return false; }
+        }
+        if (q && !c.name.toLowerCase().includes(q)) return false;
+        return true;
+    });
+}
+
+function cardHTML(c) {
+    const isPlay = c.id === S.channels[S.idx]?.id;
+    const isFav = S.favs.has(c.id);
+    const logoContent = c.logo 
+        ? `<img src="${c.logo}" class="w-full h-full object-contain" loading="lazy" onerror="this.style.display='none'; this.parentElement.textContent='${String(c.num).padStart(2,'0')}';">`
+        : String(c.num).padStart(2,'0');
+    return `<div data-cid="${c.id}" class="channel-card group p-2.5 rounded-2xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${isPlay ? 'bg-blue-600/20 border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]' : 'bg-white/5 hover:bg-white/10 border-white/5'}">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-white font-bold text-sm shrink-0 border border-white/10 overflow-hidden p-1">${logoContent}</div>
+            <div class="min-w-0">
+                <div class="font-bold text-sm text-white truncate">${c.name}</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">${c.category}</div>
+            </div>
+        </div>
+        <button type="button" data-fav="${c.id}" class="fav-btn ${isFav ? 'active' : 'text-slate-500'} p-2 rounded-lg hover:bg-white/10 cursor-pointer shrink-0 transition-colors">
+            <svg class="w-4 h-4" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+        </button>
+    </div>`;
+}
+
+function renderList() {
+    const filtered = filterChannels();
+    $('channelsCountBadge').textContent = filtered.length;
+    if (filtered.length === 0) { container.innerHTML = '<div class="text-center py-10 text-slate-500 text-sm">Нет каналов</div>'; return; }
+    const vis = filtered.slice(0, visible);
+    let html = vis.map(cardHTML).join('');
+    if (vis.length < filtered.length) html += `<button data-action="more" class="w-full py-3 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 font-semibold text-sm cursor-pointer transition-colors">Показать ещё</button>`;
+    requestAnimationFrame(() => { container.innerHTML = html; });
+}
+
+// ===== ВОСПРОИЗВЕДЕНИЕ =====
+function playChannel(idx) {
+    if (idx < 0 || idx >= S.channels.length) return;
+    const ch = S.channels[idx];
+    S.idx = idx;
+    
+    // 1. Мгновенно обновляем UI
+    updateChannelUI(ch);
+    
+    // 2. Показываем лоадер
+    $('errorOverlay').classList.add('hidden');
+    $('loaderOverlay').classList.remove('hidden');
+    $('loaderText').textContent = `Загрузка: ${ch.name}`;
+    $('loaderSubText').textContent = 'Соединение...';
+    if (S.sidebar) toggleSidebar(false);
+    
+    // 3. Подключаемся
+    if (S.hls) { try { S.hls.destroy(); } catch(e){} S.hls = null; }
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+
+    const url = ch.url;
+    const isDirect = /\.(mp3|aac|mp4|webm)(\?|$)/i.test(url);
+
+    if (!isDirect && typeof Hls !== 'undefined' && Hls.isSupported()) {
+        const hls = new Hls({
+            enableWorker: true, lowLatencyMode: true, backBufferLength: 10, maxBufferLength: 10,
+            manifestLoadingTimeOut: 5000, manifestLoadingMaxRetry: 1,
+            levelLoadingTimeOut: 5000, fragLoadingTimeOut: 6000,
+            xhrSetup: x => { x.withCredentials = false; }
+        });
+        S.hls = hls;
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            updateResolution(hls.levels);
+            populateQualityMenu(hls.levels);
+            tryPlay();
+        });
+        
+        hls.on(Hls.Events.LEVEL_SWITCHED, (e, d) => {
+            const l = hls.levels[d.level];
+            if (l) $('currentStreamResolution').textContent = `${l.height ? l.height + 'p' : 'HD'}`;
+        });
+        
+        hls.on(Hls.Events.ERROR, (e, d) => {
+            if (d.fatal) handleFail(ch);
+        });
+    } else {
+        video.src = url;
+        video.addEventListener('loadedmetadata', () => {
+            $('currentStreamResolution').textContent = 'Прямой';
+            tryPlay();
+        }, { once: true });
+        video.addEventListener('error', () => handleFail(ch), { once: true });
+    }
+}
+
+function updateChannelUI(ch) {
+    $('currentChannelNumber').textContent = '#' + String(ch.num).padStart(2, '0');
+    $('currentChannelName').textContent = ch.name;
+    $('currentChannelCategory').textContent = ch.category;
+    const logoEl = $('currentChannelLogo');
+    if (ch.logo) {
+        logoEl.innerHTML = `<img src="${ch.logo}" class="w-full h-full object-contain" onerror="this.style.display='none'; this.parentElement.textContent='${ch.num}';">`;
+    } else {
+        logoEl.innerHTML = String(ch.num);
+    }
+}
+
+function updateResolution(levels) {
+    if (!levels || !levels.length) return;
+    let best = levels.length - 1;
+    for (let i = levels.length - 1; i >= 0; i--) {
+        if ((levels[i].height || 720) <= screen.height * 1.1) { best = i; break; }
+    }
+    if (S.hls) S.hls.currentLevel = best;
+    const h = levels[best]?.height;
+    if (h) $('currentStreamResolution').textContent = `${h}p`;
+}
+
+function tryPlay() {
+    const p = video.play();
+    if (p && p.catch) p.catch(() => { video.muted = true; updateMute(); video.play().catch(() => {}); });
+}
+
+function handleFail(ch) {
+    $('loaderOverlay').classList.add('hidden');
+    $('errorOverlay').classList.remove('hidden');
+    $('errorDetails').textContent = `«${ch.name}» недоступен. Попробуйте другой.`;
+}
+
+function populateQualityMenu(levels) {
+    const list = $('qualityList');
+    if (!levels || levels.length === 0) { list.innerHTML = '<div class="text-xs text-slate-500 text-center py-2">Нет уровней</div>'; return; }
+    list.innerHTML = levels.map((l, i) => {
+        const h = l.height || 0;
+        const isActive = S.hls && S.hls.currentLevel === i;
+        return `<button type="button" data-level="${i}" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-white/10'}">${h ? h + 'p' : '#' + (i+1)} ${l.bitrate ? '• ' + (l.bitrate / 1e6).toFixed(1) + ' Mbps' : ''}</button>`;
+    }).join('');
+}
+
+// ===== СОБЫТИЯ =====
+$('categoryTabs').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-cat]');
+    if (!btn) return;
+    S.cat = btn.dataset.cat;
+    visible = PAGE;
+    renderCats(); renderList();
+});
+
+container.addEventListener('click', (e) => {
+    const more = e.target.closest('[data-action="more"]');
+    if (more) { visible += PAGE; renderList(); return; }
+    const favBtn = e.target.closest('[data-fav]');
+    if (favBtn) {
+        e.stopPropagation();
+        const id = favBtn.dataset.fav;
+        if (S.favs.has(id)) S.favs.delete(id); else S.favs.add(id);
+        ls.set('ru_favs', [...S.favs]); renderList(); renderCats();
+        return;
+    }
+    const card = e.target.closest('.channel-card');
+    if (card) {
+        const idx = S.channels.findIndex(c => c.id === card.dataset.cid);
+        if (idx !== -1) playChannel(idx);
+    }
+});
+
+// Загрузка избранного
+const savedFavs = ls.get('ru_favs', []);
+if (Array.isArray(savedFavs)) S.favs = new Set(savedFavs);
+
+// Управление
+function toggleSidebar(force) {
+    S.sidebar = typeof force === 'boolean' ? force : !S.sidebar;
+    if (S.sidebar) $('channelsSidebar').classList.remove('-translate-x-full','hidden');
+    else $('channelsSidebar').classList.add('-translate-x-full');
+}
+function toggleMute() { video.muted = !video.muted; updateMute(); }
+function updateMute() { $('volHighIcon').classList.toggle('hidden', video.muted); $('volMuteIcon').classList.toggle('hidden', !video.muted); }
+
+let toastT;
+function toast(msg) { $('toastMessage').textContent = msg; $('toastNotification').classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => $('toastNotification').classList.add('hidden'), 2500); }
+
+function showOsd() {
+    $('osdWrapper').classList.remove('osd-hidden');
+    $('osdWrapper').classList.add('osd-visible');
+    clearTimeout(S.osdT);
+    S.osdT = setTimeout(() => { if (!video.paused) { $('osdWrapper').classList.add('osd-hidden'); $('osdWrapper').classList.remove('osd-visible'); } }, 5000);
+}
+
+// Привязка
+$('toggleSidebarBtn').onclick = () => toggleSidebar();
+$('closeSidebarBtn').onclick = () => toggleSidebar(false);
+$('openSidebarFromErrorBtn').onclick = () => { $('errorOverlay').classList.add('hidden'); toggleSidebar(true); };
+$('prevChannelBtn').onclick = () => playChannel(S.idx - 1);
+$('nextChannelBtn').onclick = () => playChannel(S.idx + 1);
+$('nextChannelErrorBtn').onclick = () => { $('errorOverlay').classList.add('hidden'); playChannel(S.idx + 1); };
+$('playPauseBtn').onclick = () => { video.paused ? video.play() : video.pause(); };
+$('muteToggleBtn').onclick = toggleMute;
+$('fullscreenBtn').onclick = () => { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {}); else document.exitFullscreen().catch(() => {}); };
+$('channelSearchInput').addEventListener('input', debounce(e => { S.q = e.target.value; visible = PAGE; renderList(); }, 200));
+
+$('openQualityMenuBtn').onclick = () => {
+    const menu = $('qualityMenu');
+    menu.classList.toggle('hidden');
+    if (!menu.classList.contains('hidden') && S.hls && S.hls.levels) populateQualityMenu(S.hls.levels);
+};
+
+$('qualityList').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-level]');
+    if (!btn || !S.hls) return;
+    S.hls.currentLevel = parseInt(btn.dataset.level, 10);
+    $('qualityMenu').classList.add('hidden');
+});
+
+// Видео события
+video.addEventListener('playing', () => {
+    $('loaderOverlay').classList.add('hidden');
+    $('errorOverlay').classList.add('hidden');
+    $('pauseIcon').classList.remove('hidden');
+    $('playIcon').classList.add('hidden');
+    showOsd();
+});
+video.addEventListener('pause', () => {
+    $('pauseIcon').classList.add('hidden');
+    $('playIcon').classList.remove('hidden');
+    showOsd();
+});
+
+// Глобальные события
+window.addEventListener('mousemove', showOsd);
+window.addEventListener('touchstart', showOsd);
+window.addEventListener('keydown', showOsd);
+
+// Старт
+if (innerWidth < 640) toggleSidebar(false);
+loadPlaylists();
+</script>
 </body>
 </html>
