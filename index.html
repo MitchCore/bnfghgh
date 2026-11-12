@@ -3,13 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>РФ ТВ IPTV</title>
+<title>РФ ТВ IPTV — Умный плеер</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="preconnect" href="https://ngrch.github.io" crossorigin>
 <link rel="preconnect" href="https://iptv-org.github.io" crossorigin>
-<link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
 <script>
 tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } }
 </script>
@@ -25,36 +23,54 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
 /* Скроллбар */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-thumb { background: rgba(100,116,139,.5); border-radius: 999px; }
-::-webkit-scrollbar-track { background: transparent; }
 
 /* Анимации */
 @keyframes pulseLive { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
 .live-dot { animation: pulseLive 1.8s infinite ease-in-out; }
-
 @keyframes spin { 100% { transform: rotate(360deg); } }
 .spinner-ring { width: 50px; height: 50px; border: 4px solid #1e293b; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
 
 /* Оптимизация */
-.channel-card { content-visibility: auto; contain-intrinsic-size: 72px; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* Скрытие OSD */
+.channel-card { content-visibility: auto; contain-intrinsic-size: 72px; transition: background 0.2s, border 0.2s; }
 .osd-hidden { opacity: 0; pointer-events: none; }
 .osd-visible { opacity: 1; pointer-events: auto; }
-
 .fav-btn.active { color: #fbbf24; }
+
+/* Специфичные стили для статусов */
+.status-ok { border-left: 3px solid #10b981 !important; }
+.status-error { border-left: 3px solid #ef4444 !important; }
+.status-loading { border-left: 3px solid #f59e0b !important; }
+
+/* Адаптив для Smart TV и приставок (Крупный шрифт и фокус) */
+body.device-tv .glass-btn { padding: 1rem 1.5rem; font-size: 1.1rem; }
+body.device-tv .channel-card { padding: 1.2rem; }
+body.device-tv .channel-card:focus { transform: scale(1.02); border-color: #3b82f6; box-shadow: 0 0 15px rgba(59,130,246,0.5); outline: none; background: rgba(255,255,255,0.1); }
+body.device-tv h1 { font-size: 1.5rem; }
+body.device-tv .channel-name { font-size: 1.2rem; }
+
+/* Скрытие интерфейса при полном экране */
+body.maximized-video #osdWrapper { opacity: 0; pointer-events: none; }
+
+#videoPlayer { filter: brightness(1) contrast(1) saturate(1); transition: filter 0.1s; }
 </style>
 </head>
 <body class="relative w-screen h-screen overflow-hidden select-none">
 
 <!-- ===== ВИДЕО ===== -->
 <div id="playerContainer" class="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
-    <!-- Атрибут muted убран, чтобы пробовать включать со звуком -->
     <video id="videoPlayer" class="w-full h-full object-contain" playsinline autoplay preload="auto" crossorigin="anonymous"></video>
 
-    <!-- Экран загрузки -->
-    <div id="loaderOverlay" class="absolute inset-0 bg-black flex flex-col items-center justify-center z-30 transition-opacity duration-300">
+    <!-- Заставка "Выберите канал" -->
+    <div id="idleOverlay" class="absolute inset-0 bg-[#090b10] flex flex-col items-center justify-center z-20 transition-opacity duration-300">
+        <div class="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center mb-6 border border-white/10 shadow-[0_0_30px_rgba(59,130,246,0.15)]">
+            <svg class="w-10 h-10 text-blue-500 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+        <h2 class="text-2xl font-bold text-white mb-2">Выберите канал или фильм</h2>
+        <p class="text-sm text-slate-400">Кликните по названию в списке слева</p>
+    </div>
+
+    <!-- Загрузка -->
+    <div id="loaderOverlay" class="hidden absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center z-30 transition-opacity duration-300">
         <div class="spinner-ring mb-6"></div>
         <p id="loaderText" class="text-xl font-bold text-white tracking-wide">Загрузка...</p>
         <p id="loaderSubText" class="text-sm text-slate-400 mt-2">Соединение...</p>
@@ -66,10 +82,10 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
         </div>
         <h3 class="text-xl font-bold text-white mb-2">Поток недоступен</h3>
-        <p id="errorDetails" class="text-sm text-slate-400 max-w-md mb-6">Попробуйте другой канал.</p>
+        <p id="errorDetails" class="text-sm text-slate-400 max-w-md mb-6">Попробуйте другой.</p>
         <div class="flex flex-wrap gap-3 justify-center">
-            <button id="nextChannelErrorBtn" type="button" class="glass-btn px-6 py-3 rounded-xl text-white font-semibold text-sm cursor-pointer">Следующий →</button>
-            <button id="openSidebarFromErrorBtn" type="button" class="glass-btn px-6 py-3 rounded-xl text-white font-semibold text-sm cursor-pointer">📺 Список</button>
+            <button id="nextChannelErrorBtn" type="button" class="glass-btn px-6 py-3 rounded-xl text-white font-semibold text-sm cursor-pointer focusable">Следующий →</button>
+            <button id="openSidebarFromErrorBtn" type="button" class="glass-btn px-6 py-3 rounded-xl text-white font-semibold text-sm cursor-pointer focusable">📺 Список</button>
         </div>
     </div>
 
@@ -86,20 +102,24 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
     <!-- Верхняя панель -->
     <header class="w-full p-4 sm:p-6 bg-gradient-to-b from-black/95 to-transparent flex items-center justify-between pointer-events-auto">
         <div class="flex items-center gap-4">
-            <button id="toggleSidebarBtn" type="button" class="glass-btn p-3 rounded-xl text-white flex items-center gap-2 cursor-pointer">
+            <button id="toggleSidebarBtn" type="button" class="glass-btn p-3 rounded-xl text-white flex items-center gap-2 cursor-pointer focusable">
                 <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h10"/></svg>
                 <span class="font-bold text-sm tracking-tight">РФ ТВ IPTV</span>
             </button>
-            <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-semibold text-emerald-400">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 live-dot"></span> Онлайн
-            </div>
         </div>
         <div class="flex items-center gap-2">
-            <button id="openQualityMenuBtn" type="button" class="glass-btn px-4 py-2.5 rounded-xl text-white text-xs font-semibold cursor-pointer">
+            <button id="btnScan" type="button" class="glass-btn px-4 py-2.5 rounded-xl text-white text-xs font-semibold cursor-pointer flex items-center gap-2 border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 focusable">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                Сканировать
+            </button>
+            <button id="openQualityMenuBtn" type="button" class="glass-btn px-4 py-2.5 rounded-xl text-white text-xs font-semibold cursor-pointer focusable">
                 ⚙️ Качество
             </button>
-            <!-- Кнопка Инфо (кружочек) -->
-            <button id="openInfoBtn" type="button" class="glass-btn w-10 h-10 rounded-full flex items-center justify-center text-white font-serif italic text-lg cursor-pointer" title="Информация">
+            <button id="openSettingsBtn" type="button" class="glass-btn px-4 py-2.5 rounded-xl text-white text-xs font-semibold cursor-pointer flex items-center gap-2 focusable">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Настройки
+            </button>
+            <button id="openInfoBtn" type="button" class="glass-btn w-10 h-10 rounded-full flex items-center justify-center text-white font-serif italic text-lg cursor-pointer focusable" title="Информация">
                 i
             </button>
         </div>
@@ -112,12 +132,26 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
             <div class="p-4 border-b border-white/5 space-y-4">
                 <div class="flex items-center justify-between">
                     <h2 class="text-base font-bold text-white flex items-center gap-2">Каналы <span id="channelsCountBadge" class="px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-300 font-semibold">0</span></h2>
-                    <button id="closeSidebarBtn" type="button" class="glass-btn p-2 rounded-lg text-slate-300 cursor-pointer">✕</button>
+                    <button id="closeSidebarBtn" type="button" class="glass-btn p-2 rounded-lg text-slate-300 cursor-pointer focusable">✕</button>
                 </div>
-                <input id="channelSearchInput" type="text" placeholder="Поиск..." class="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors">
-                <div id="playlistSyncStatus" class="flex items-center justify-between text-[11px] px-3 py-2 rounded-lg bg-white/5 text-slate-300">
-                    <span id="syncStatusText" class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>Загрузка...</span>
+                
+                <!-- ПОИСК И ФИЛЬТР КАЧЕСТВА -->
+                <div class="flex gap-2">
+                    <input id="channelSearchInput" type="text" placeholder="Поиск канала..." class="flex-1 bg-slate-900/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors">
+                    <select id="qualityFilter" class="bg-slate-900/80 border border-white/10 rounded-xl px-2 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 w-[100px]">
+                        <option value="all">Любое</option>
+                        <option value="1080">1080p</option>
+                        <option value="720">720p</option>
+                        <option value="sd">SD</option>
+                    </select>
                 </div>
+                
+                <!-- Статус загрузки -->
+                <div id="playlistSyncStatus" class="flex flex-col gap-1 text-[11px] px-3 py-2 rounded-lg bg-white/5 text-slate-300">
+                    <span id="syncStatusText" class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>Готово</span>
+                    <span id="syncMegaText" class="flex items-center gap-2 text-slate-500"><span class="w-2 h-2 rounded-full bg-slate-500"></span>Фон. обновление...</span>
+                </div>
+                
                 <div id="categoryTabs" class="flex flex-wrap gap-1.5"></div>
             </div>
             <div id="channelsListContainer" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
@@ -128,14 +162,12 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
     <!-- Нижняя панель -->
     <footer class="w-full p-4 sm:p-6 bg-gradient-to-t from-black/95 to-transparent pointer-events-auto">
         <div class="max-w-[1400px] mx-auto flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 glass p-4 rounded-2xl border border-white/10 shadow-2xl">
-            
-            <!-- Инфо о канале -->
             <div class="flex items-center gap-4 w-full lg:w-auto shrink-0">
-                <div id="currentChannelLogo" class="w-16 h-16 rounded-xl bg-slate-800 flex items-center justify-center text-white font-extrabold text-lg shadow-inner border border-white/10 overflow-hidden shrink-0">1</div>
+                <div id="currentChannelLogo" class="w-16 h-16 rounded-xl bg-slate-800 flex items-center justify-center text-white font-extrabold text-lg shadow-inner border border-white/10 overflow-hidden shrink-0">?</div>
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
-                        <span id="currentChannelNumber" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">#01</span>
-                        <h1 id="currentChannelName" class="text-lg font-bold text-white truncate">Загрузка...</h1>
+                        <span id="currentChannelNumber" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">#--</span>
+                        <h1 id="currentChannelName" class="text-lg font-bold text-white truncate">Канал не выбран</h1>
                     </div>
                     <div class="flex items-center gap-2 mt-1 text-xs text-slate-400 flex-wrap">
                         <span id="currentChannelCategory" class="text-blue-400 font-medium">—</span>
@@ -145,7 +177,6 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
                 </div>
             </div>
 
-            <!-- Расписание -->
             <div class="flex-1 w-full lg:max-w-sm bg-black/40 rounded-xl p-3 border border-white/5 flex items-center justify-center h-[72px]">
                 <div class="text-sm text-slate-500 flex items-center gap-2">
                     <svg class="w-5 h-5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -153,19 +184,18 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
                 </div>
             </div>
 
-            <!-- Управление -->
             <div class="flex items-center justify-end gap-2 w-full lg:w-auto shrink-0">
-                <button id="prevChannelBtn" type="button" class="glass-btn p-3 rounded-xl text-white cursor-pointer"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
-                <button id="playPauseBtn" type="button" class="glass-btn p-4 rounded-xl bg-blue-600/80 hover:bg-blue-600 text-white cursor-pointer shadow-lg shadow-blue-600/20">
-                    <svg id="pauseIcon" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
-                    <svg id="playIcon" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <button id="prevChannelBtn" type="button" class="glass-btn p-3 rounded-xl text-white cursor-pointer focusable"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                <button id="playPauseBtn" type="button" class="glass-btn p-4 rounded-xl bg-blue-600/80 hover:bg-blue-600 text-white cursor-pointer shadow-lg shadow-blue-600/20 focusable">
+                    <svg id="pauseIcon" class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
+                    <svg id="playIcon" class="w-6 h-6 hidden fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 </button>
-                <button id="nextChannelBtn" type="button" class="glass-btn p-3 rounded-xl text-white cursor-pointer"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
-                <button id="muteToggleBtn" type="button" class="glass-btn p-3 rounded-xl text-white cursor-pointer ml-2">
+                <button id="nextChannelBtn" type="button" class="glass-btn p-3 rounded-xl text-white cursor-pointer focusable"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+                <button id="muteToggleBtn" type="button" class="glass-btn p-3 rounded-xl text-white cursor-pointer ml-2 focusable">
                     <svg id="volHighIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
                     <svg id="volMuteIcon" class="w-5 h-5 hidden text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg>
                 </button>
-                <button id="fullscreenBtn" type="button" class="glass-btn p-3 rounded-xl text-white cursor-pointer"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg></button>
+                <button id="fullscreenBtn" type="button" class="glass-btn p-3 rounded-xl text-white cursor-pointer focusable"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg></button>
             </div>
         </div>
     </footer>
@@ -177,40 +207,60 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
     <div id="qualityList" class="p-2 max-h-64 overflow-y-auto space-y-1"><div class="text-xs text-slate-500 text-center py-2">Нет уровней</div></div>
 </div>
 
+<!-- ===== МОДАЛКА НАСТРОЕК ВИДЕО ===== -->
+<div id="settingsModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="glass w-full max-w-sm rounded-3xl border border-white/15 shadow-2xl overflow-hidden flex flex-col">
+        <div class="p-5 border-b border-white/10 flex items-center justify-between bg-white/5">
+            <h3 class="text-lg font-bold text-white">Настройки видео</h3>
+            <button id="closeSettingsBtn" class="glass-btn p-2 rounded-xl text-slate-300 cursor-pointer focusable">✕</button>
+        </div>
+        <div class="p-6 space-y-6">
+            <div>
+                <div class="flex justify-between text-xs font-semibold text-slate-300 mb-2"><span>Яркость</span><span id="valBrightness" class="text-blue-400">100%</span></div>
+                <input type="range" id="sliderBrightness" min="50" max="150" value="100" class="w-full accent-blue-500">
+            </div>
+            <div>
+                <div class="flex justify-between text-xs font-semibold text-slate-300 mb-2"><span>Контрастность</span><span id="valContrast" class="text-blue-400">100%</span></div>
+                <input type="range" id="sliderContrast" min="50" max="150" value="100" class="w-full accent-blue-500">
+            </div>
+            <div>
+                <div class="flex justify-between text-xs font-semibold text-slate-300 mb-2"><span>Насыщенность</span><span id="valSaturation" class="text-blue-400">100%</span></div>
+                <input type="range" id="sliderSaturation" min="0" max="200" value="100" class="w-full accent-blue-500">
+            </div>
+            <div class="pt-2 border-t border-white/10 flex gap-2">
+                <button id="btnResetVideo" class="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors focusable">Сбросить</button>
+                <button id="btnSaveVideo" class="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/20 transition-colors focusable">Готово</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ===== МОДАЛКА ИНФО ===== -->
 <div id="infoModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="glass w-full max-w-sm rounded-3xl border border-white/15 shadow-2xl overflow-hidden flex flex-col">
         <div class="p-5 border-b border-white/10 flex items-center justify-between bg-white/5">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-serif italic text-lg">i</div>
-                <h3 class="text-lg font-bold text-white">О плеере</h3>
-            </div>
-            <button id="closeInfoBtn" class="glass-btn p-2 rounded-xl text-slate-300 cursor-pointer">✕</button>
+            <h3 class="text-lg font-bold text-white">О плеере</h3>
+            <button id="closeInfoBtn" class="glass-btn p-2 rounded-xl text-slate-300 cursor-pointer focusable">✕</button>
         </div>
         <div class="p-6 space-y-4">
             <div class="flex flex-col items-center justify-center py-2">
                 <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center text-white font-black text-2xl shadow-xl mb-3">РФ</div>
                 <div class="text-lg font-bold">РФ ТВ <span class="text-blue-400">IPTV</span></div>
-                <div class="text-xs text-slate-400 mt-1">Версия 2.0</div>
+                <div class="text-xs text-slate-400 mt-1">Версия 6.4 (ТВОЕ ТВ)</div>
             </div>
-            
             <div class="bg-black/30 rounded-xl p-4 border border-white/5 space-y-3 text-sm">
-                <div class="flex justify-between items-center">
-                    <span class="text-slate-400">Создано:</span>
-                    <span class="text-white font-mono">12.11.2026</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-slate-400">Ваш регион:</span>
-                    <span id="infoRegion" class="text-emerald-400 font-medium">Определение...</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-slate-400">Текущее время:</span>
-                    <span id="infoTime" class="text-white font-mono">--:--</span>
-                </div>
+                <div class="flex justify-between items-center"><span class="text-slate-400">Устройство:</span><span id="infoDevice" class="text-white font-mono">ПК / Телефон</span></div>
+                <div class="flex justify-between items-center"><span class="text-slate-400">Ваш регион:</span><span id="infoRegion" class="text-emerald-400 font-medium">Определение...</span></div>
+                <div class="flex justify-between items-center"><span class="text-slate-400">Время:</span><span id="infoTime" class="text-white font-mono">--:--</span></div>
             </div>
+            <!-- Кнопка поддержки -->
+            <a href="https://www.donationalerts.com/r/golubtvvv" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white font-bold text-sm shadow-lg shadow-orange-500/20 transition-all focusable">
+                <img src="https://www.donationalerts.com/favicon.ico" alt="DonationAlerts" class="w-5 h-5 rounded-full bg-white p-0.5">
+                Поддержать проект
+            </a>
         </div>
         <div class="p-4 border-t border-white/10 bg-white/5 text-center">
-            <button id="closeInfoFooterBtn" class="glass-btn px-6 py-2.5 rounded-xl text-white text-sm font-bold w-full">Закрыть</button>
+            <button id="closeInfoFooterBtn" class="glass-btn px-6 py-2.5 rounded-xl text-white text-sm font-bold w-full focusable">Закрыть</button>
         </div>
     </div>
 </div>
@@ -219,57 +269,214 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0507
 'use strict';
 const $ = id => document.getElementById(id);
 const PAGE = 60;
+const CACHE_KEY = 'rftv_mega_cache_v14';
+
+// ===== ОПРЕДЕЛЕНИЕ УСТРОЙСТВА =====
+const isTV = /SmartTV|Tizen|WebOS|AppleTV|AndroidTV|GoogleTV|Roku|Box|TV/i.test(navigator.userAgent);
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && !isTV;
+
+if (isTV) {
+    document.body.classList.add('device-tv');
+    $('infoDevice').textContent = 'Smart TV / Приставка';
+} else if (isMobile) {
+    $('infoDevice').textContent = 'Смартфон / Планшет';
+    setTimeout(() => toggleSidebar(false), 100);
+} else {
+    $('infoDevice').textContent = 'Компьютер / Ноутбук';
+}
+
+// ===== VOD ФИЛЬМЫ (MP4) =====
+const VOD_MOVIES = [
+    { name: '🍿 Форсаж (Трейлер HD)', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4' },
+    { name: '🍿 Побег (Трейлер HD)', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4' },
+    { name: '🍿 Развлечение (Трейлер HD)', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4' },
+    { name: '🍿 Поездка (Трейлер HD)', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4' },
+    { name: '🍿 Пламя (Трейлер HD)', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4' },
+    { name: '🍿 Синтел (Полный фильм HD)', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4' },
+    { name: '🍿 Слёзы стали (Полный фильм HD)', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4' },
+    { name: '🍿 Большой Бак (Полный фильм HD)', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4' },
+    { name: '🍿 Слоновьи мечты (Полный фильм HD)', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4' }
+].map((m, i) => ({
+    id: 'vod-'+i,
+    name: m.name,
+    url: m.url,
+    category: 'Фильмы HD',
+    logo: '',
+    checked: true, working: true, status: 'ok'
+}));
 
 // ===== ИСТОЧНИКИ =====
 const PRIMARY_SOURCE = { name: 'ngrch', url: 'https://ngrch.github.io/iptv/ru.m3u', cat: 'Русские' };
-const SECONDARY_SOURCES = [
-    { name: 'iptv-org RU', url: 'https://iptv-org.github.io/iptv/countries/ru.m3u', cat: 'Русские' },
-    { name: 'Free-TV', url: 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8', cat: 'Все' },
-    { name: 'DropTV', url: 'https://raw.githubusercontent.com/IPTVRU2026/IPTVMIR/main/IPTV_MEGA_PLAYLIST.m3u', cat: 'Все' },
-    { name: 'kittv Kids', url: 'https://kittv.ru/detkanaly.m3u', cat: 'Детские' },
-    { name: 'kittv Movies', url: 'https://kittv.ru/films.m3u', cat: 'Кино' }
-];
 
-// ===== КАТЕГОРИИ =====
+const generateSecondarySources = () => {
+    let list = [
+        // Добавлен ТВОЕ ТВ
+        { name: 'ТВОЕ ТВ', url: 'https://m3u.su/tvoe', cat: 'Русские' },
+        
+        // Основные HD Федеральные
+        { name: 'IPTV-org RU', url: 'https://iptv-org.github.io/iptv/countries/ru.m3u', cat: 'Русские' },
+        { name: 'Smotrim HD', url: 'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/ru_smotrim.m3u', cat: 'Русские' },
+        { name: 'DropTV Mega', url: 'https://raw.githubusercontent.com/IPTVRU2026/IPTVMIR/main/IPTV_MEGA_PLAYLIST.m3u', cat: 'Все' },
+        { name: 'Free-TV', url: 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8', cat: 'Все' },
+        
+        // Спорт
+        { name: 'Sports (800+)', url: 'https://iptv-org.github.io/iptv/categories/sports.m3u', cat: 'Спорт' },
+        { name: 'World Cup 2026', url: 'http://82.156.243.185:33389/fwc.m3u', cat: 'Чемпионаты мира' },
+        
+        // Остальные
+        { name: 'Romaxa55', url: 'https://romaxa55.github.io/world_ip_tv/output/index.m3u', cat: 'Все' },
+        { name: 'Cypher', url: 'https://raw.githubusercontent.com/Cypher1984GIT/Canales-IPTV/main/canales.m3u', cat: 'Все' },
+        { name: 'Shovo', url: 'https://raw.githubusercontent.com/shovo127/IPTV-By-Shovo/main/playlist.m3u', cat: 'Все' },
+        { name: 'Jromero', url: 'https://raw.githubusercontent.com/jromero88/iptv/main/playlist.m3u', cat: 'Все' },
+        { name: 'Sanuyyq', url: 'https://raw.githubusercontent.com/Sanuyyq/iptv-ot-sanaeye/main/tvteam.m3u8', cat: 'Все' },
+        { name: 'Nexonic', url: 'https://shahrukhalid.github.io/nexonic-iptv/playlists/all.m3u', cat: 'Все' }
+    ];
+    
+    const cats = ['sports', 'news', 'music', 'kids', 'documentary', 'entertainment', 'general', 'education', 'lifestyle', 'outdoor', 'relax', 'science', 'shop', 'travel', 'weather', 'auto', 'business', 'cooking', 'culture', 'family', 'animated'];
+    cats.forEach(c => list.push({ name: `Кат: ${c}`, url: `https://iptv-org.github.io/iptv/categories/${c}.m3u`, cat: 'Все' }));
+
+    const countries = ['ru', 'ua', 'by', 'kz', 'us', 'gb', 'de', 'fr', 'it', 'es', 'tr', 'pl', 'cz', 'bg', 'ro', 'gr', 'rs', 'hr', 'si', 'sk', 'hu', 'md', 'ge', 'am', 'az', 'uz', 'kg', 'tj', 'tm', 'lt', 'lv', 'ee', 'fi', 'se', 'no', 'dk', 'nl', 'be', 'ch', 'at', 'pt', 'ie', 'ca', 'au', 'nz'];
+    countries.forEach(c => list.push({ name: `Стр: ${c.toUpperCase()}`, url: `https://iptv-org.github.io/iptv/countries/${c}.m3u`, cat: 'Все' }));
+
+    return list;
+};
+
+const SECONDARY_SOURCES = generateSecondarySources();
+
 const CATS = [
-    ['Все', 'Все', '📺'], ['Русские', 'Русские', '🇷🇺'], ['Новости', 'Новости', '📰'],
-    ['Спорт', 'Спорт', '⚽'], ['Кино', 'Кино', '🎬'], ['Детские', 'Детские', '🧸'],
-    ['Музыка', 'Музыка', '🎵'], ['Избранное', 'Избранное', '⭐']
+    ['Все', 'Все', '📺'], 
+    ['Фильмы HD', 'Фильмы HD', '🍿'], 
+    ['Рабочие', 'Рабочие', '✅'],
+    ['Чемпионаты мира', 'ЧМ', '🌍'],
+    ['Футбол', 'Футбол', '⚽'], 
+    ['Русский футбол', 'Рус. футбол', '🇷🇺⚽'], 
+    ['Спорт', 'Спорт', '🏆'],
+    ['Русские', 'Русские', '🇷🇺'], 
+    ['Новости', 'Новости', '📰'],
+    ['Детские', 'Детские', '🧸'],
+    ['Музыка', 'Музыка', '🎵'], 
+    ['Избранное', 'Избранное', '⭐']
 ];
 
-// ===== СОСТОЯНИЕ =====
 const S = {
     channels: [], favs: new Set(),
-    idx: 0, cat: 'Все', q: '', hls: null,
-    status: {}, sidebar: true, osdT: null
+    idx: -1, cat: 'Все', q: '', qualityFilter: 'all', hls: null,
+    sidebar: true, osdT: null, isMaximized: false,
+    videoSettings: { brightness: 100, contrast: 100, saturation: 100 },
+    isScanning: false
 };
 
 let visible = PAGE;
 const video = $('videoPlayer');
 const container = $('channelsListContainer');
+let loadTimeout = null;
 
-// ===== УТИЛИТЫ =====
+// ===== КНОПКИ УПРАВЛЕНИЯ (ПОЛНЫЙ ЭКРАН) =====
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(()=>{});
+        S.isMaximized = true;
+        document.body.classList.add('maximized-video');
+    } else {
+        document.exitFullscreen();
+        S.isMaximized = false;
+        document.body.classList.remove('maximized-video');
+    }
+}
+
+$('videoClickZone').addEventListener('dblclick', toggleFullscreen);
+
+// ===== НАВИГАЦИЯ ПУЛЬТОМ (D-PAD) =====
+function navigateSpatial(direction) {
+    const focusables = Array.from(document.querySelectorAll('.focusable, .channel-card')).filter(el => el.offsetParent !== null);
+    if (focusables.length === 0) return;
+    
+    const current = document.activeElement;
+    const currentIndex = focusables.indexOf(current);
+    
+    if (currentIndex === -1) { focusables[0].focus(); return; }
+    
+    if (direction === 'ArrowDown' || direction === 'ArrowRight') {
+        const next = focusables[(currentIndex + 1) % focusables.length];
+        next.focus();
+        next.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } else if (direction === 'ArrowUp' || direction === 'ArrowLeft') {
+        const prev = focusables[(currentIndex - 1 + focusables.length) % focusables.length];
+        prev.focus();
+        prev.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+}
+
+document.addEventListener('keydown', (e) => {
+    const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+    if (isInput && e.key !== 'Escape') return;
+
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        navigateSpatial(e.key);
+    }
+    if (e.key === 'Enter') {
+        if (document.activeElement.classList.contains('channel-card')) {
+            e.preventDefault();
+            document.activeElement.click();
+        }
+    }
+    if (e.key === 'Escape' || e.key === 'Backspace') {
+        if (S.isMaximized) toggleFullscreen();
+        else if (S.sidebar) toggleSidebar(false);
+    }
+});
+
+// ===== ОСТАЛЬНАЯ ЛОГИКА =====
 const debounce = (fn, ms) => { let t; return function(...a){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a),ms); }; };
 const ls = { get(k,d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } }, set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} } };
 
-// ===== КЛАССИФИКАЦИЯ =====
+function loadVideoSettings() {
+    const saved = ls.get('ru_video_settings', null);
+    if (saved) S.videoSettings = { ...S.videoSettings, ...saved };
+    applyVideoFilters();
+    $('sliderBrightness').value = S.videoSettings.brightness;
+    $('valBrightness').textContent = S.videoSettings.brightness + '%';
+    $('sliderContrast').value = S.videoSettings.contrast;
+    $('valContrast').textContent = S.videoSettings.contrast + '%';
+    $('sliderSaturation').value = S.videoSettings.saturation;
+    $('valSaturation').textContent = S.videoSettings.saturation + '%';
+}
+
+function applyVideoFilters() {
+    const b = S.videoSettings.brightness / 100;
+    const c = S.videoSettings.contrast / 100;
+    const s = S.videoSettings.saturation / 100;
+    video.style.filter = `brightness(${b}) contrast(${c}) saturate(${s}) contrast(1.05)`;
+}
+
+function saveVideoSettings() { ls.set('ru_video_settings', S.videoSettings); }
+
 function classifyChannel(name, group) {
     const f = (name + ' ' + group).toLowerCase();
-    if (/детектив|кино|фильм|сериал|cinema|movie|боевик|триллер|ужасы|фантастика|драма|комедия/i.test(f)) return 'Кино';
-    if (/мульт|сказк|kids|cartoon|детск|карусел|смешарики|маша/i.test(f)) return 'Детские';
-    if (/спорт|матч|футбол|хоккей|бокс|sport|football/i.test(f)) return 'Спорт';
+    if (/чемпионат мира|world cup|mundial|мундиаль|fifa world|world championship/i.test(f)) return 'Чемпионаты мира';
+    const isFootball = /футбол|football|soccer|fifa|uefa|ла лига|la liga|премьер-лига|premier league|серия а|serie a|бундеслига|bundesliga|лига чемпионов|champions|europa|setanta|match tv|матч/i.test(f);
+    if (isFootball) {
+        const isRussian = /россия|russia|ру|рф|рпл|премьер|кубок|наш футбол|русский/i.test(f) || /матч тв|match tv|матч!/i.test(f);
+        if (isRussian) return 'Русский футбол';
+        return 'Футбол';
+    }
+    if (/спорт|sport|hockey|boxing|ufc|basket|mma/i.test(f)) return 'Спорт';
+    if (/детектив|кино|фильм|сериал|cinema|movie|боевик|триллер|ужасы|фантастика/i.test(f)) return 'Фильмы HD';
+    if (/мульт|сказк|kids|cartoon|детск|карусел/i.test(f)) return 'Детские';
     if (/новост|news|вести|24|рбк|известия/i.test(f)) return 'Новости';
     if (/муз|music|mtv|europa|хит|радио/i.test(f)) return 'Музыка';
     return 'Русские';
 }
 
-// ===== ПАРСЕР =====
 function parseM3U(text, sourceCat) {
     const out = [];
     let name = '', grp = '', logo = '';
     const isHttps = location.protocol === 'https:';
-    for (const raw of String(text||'').split(/\r?\n/)) {
-        const l = raw.trim();
+    const lines = String(text||'').split(/\r?\n/);
+    
+    for (let i = 0; i < lines.length; i++) {
+        const l = lines[i].trim();
         if (!l) continue;
         if (l.startsWith('#EXTINF:')) {
             const gm = l.match(/group-title="([^"]*)"/i); grp = gm ? gm[1].trim() : '';
@@ -278,15 +485,23 @@ function parseM3U(text, sourceCat) {
             name = name.replace(/\[.*?\]|\(.*?\)/g,'').trim();
         } else if (!l.startsWith('#') && /^https?:\/\//i.test(l)) {
             if (isHttps && l.startsWith('http://')) { name=''; grp=''; logo=''; continue; }
+            
+            if (name && !/HD/i.test(name)) {
+                if (/[\/_\-]hd[\/_\-]|1080|720|fhd/i.test(l)) name = name + ' HD';
+            }
+
             let cat = classifyChannel(name, grp);
             if (sourceCat === 'Детские') cat = 'Детские';
-            else if (sourceCat === 'Кино') cat = 'Кино';
-            else if (sourceCat === 'Спорт') cat = 'Спорт';
             else if (sourceCat === 'Новости') cat = 'Новости';
             else if (sourceCat === 'Музыка') cat = 'Музыка';
+            else if (sourceCat === 'Чемпионаты мира') cat = 'Чемпионаты мира';
+            else if (sourceCat === 'Спорт') cat = 'Спорт';
+            else if (sourceCat === 'Русские') cat = 'Русские';
+
             out.push({
-                id: 'c-'+out.length+'-'+Math.random().toString(36).slice(2,6),
-                name: name || `Канал ${out.length+1}`, url: l, logo, category: cat
+                id: 'c-'+i+'-'+Math.random().toString(36).slice(2,6),
+                name: name || `Канал ${out.length+1}`, url: l, logo, category: cat,
+                checked: false, working: false, status: 'idle'
             });
             name=''; grp=''; logo='';
         }
@@ -294,63 +509,121 @@ function parseM3U(text, sourceCat) {
     return out;
 }
 
-// ===== ЗАГРУЗКА =====
-async function loadPlaylists() {
-    $('syncStatusText').innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>Загрузка...`;
+async function initPlaylists() {
+    // 1. Фильмы VOD
+    S.channels = [...VOD_MOVIES];
+
+    // 2. Кэш
+    const cached = ls.get(CACHE_KEY, null);
+    if (cached && cached.channels && cached.channels.length > 0) {
+        const existing = new Set(S.channels.map(c => c.url));
+        cached.channels.forEach(c => { if (!existing.has(c.url)) S.channels.push(c); });
+    }
+    S.channels = S.channels.map((c,i)=>({ ...c, num: i+1 }));
+    renderCats(); renderList();
+
+    // 3. Основной
     try {
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), 6000);
         const resp = await fetch(PRIMARY_SOURCE.url, { signal: ctrl.signal });
         clearTimeout(t);
-        if (!resp.ok) throw new Error();
-        const text = await resp.text();
-        const channels = parseM3U(text, PRIMARY_SOURCE.cat);
-        
-        S.channels = channels.map((c,i)=>({ ...c, num: i+1 }));
-        renderCats(); renderList();
-        
-        let startIdx = 0;
-        const firstIdx = S.channels.findIndex(c => /первый|1 канал|channel one/i.test(c.name));
-        if (firstIdx !== -1) startIdx = firstIdx;
-        playChannel(startIdx);
-        
-        loadSecondary();
-    } catch(e) {
-        $('syncStatusText').innerHTML = `<span class="w-2 h-2 rounded-full bg-red-400"></span>Ошибка`;
-    }
-}
-
-async function loadSecondary() {
-    const bg = $('syncStatusText');
-    let loaded = 0;
-    await Promise.allSettled(SECONDARY_SOURCES.map(async (src) => {
-        try {
-            const ctrl = new AbortController();
-            const t = setTimeout(() => ctrl.abort(), 10000);
-            const resp = await fetch(src.url, { signal: ctrl.signal });
-            clearTimeout(t);
-            if (!resp.ok) return;
+        if (resp.ok) {
             const text = await resp.text();
-            const channels = parseM3U(text, src.cat);
+            const channels = parseM3U(text, PRIMARY_SOURCE.cat);
             if (channels.length > 0) {
-                loaded++;
-                const existingUrls = new Set(S.channels.map(c => c.url));
-                channels.forEach(c => { if (!existingUrls.has(c.url)) S.channels.push(c); });
+                const existing = new Set(S.channels.map(c => c.url));
+                channels.forEach(c => { if (!existing.has(c.url)) S.channels.push(c); });
                 S.channels = S.channels.map((c,i)=>({ ...c, num: i+1 }));
                 renderCats(); renderList();
-                bg.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span>${S.channels.length} каналов (+${loaded} ист.)`;
             }
-        } catch(e) {}
-    }));
-    bg.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span>${S.channels.length} каналов (все загружены)`;
+        }
+    } catch(e) {}
+
+    // 4. Остальные
+    let loaded = 0;
+    const total = SECONDARY_SOURCES.length;
+    
+    for (let i = 0; i < total; i += 10) {
+        const chunk = SECONDARY_SOURCES.slice(i, i + 10);
+        await Promise.allSettled(chunk.map(async (src) => {
+            try {
+                const resp = await fetch(src.url, { signal: AbortSignal.timeout(15000) });
+                const text = await resp.text();
+                const channels = parseM3U(text, src.cat);
+                if (channels.length > 0) {
+                    loaded++;
+                    const existing = new Set(S.channels.map(c => c.url));
+                    channels.forEach(c => { if (!existing.has(c.url)) S.channels.push(c); });
+                    S.channels = S.channels.map((c,i)=>({ ...c, num: i+1 }));
+                    renderCats(); renderList();
+                    $('syncMegaText').innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span>Ист: ${loaded}/${total}`;
+                }
+            } catch(e) {}
+        }));
+    }
+    
+    const tvChannels = S.channels.filter(c => c.id.startsWith('c-'));
+    ls.set(CACHE_KEY, { timestamp: Date.now(), channels: tvChannels });
+    $('syncMegaText').innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span>База: ${S.channels.length}`;
+}
+
+// ===== СКАНЕР =====
+async function startScan() {
+    if (S.isScanning) return;
+    S.isScanning = true;
+    
+    const unchecked = S.channels.filter(c => !c.checked && !c.id.startsWith('vod-') && !c.id.startsWith('custom-'));
+    let checkedCount = 0;
+    let workingCount = 0;
+    const CONCURRENCY = 90; 
+    
+    $('btnScan').innerHTML = `⏳ 90 потоков...`;
+
+    async function checkChannel(ch) {
+        try {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), 3000);
+            const resp = await fetch(ch.url, { method: 'GET', signal: ctrl.signal, mode: 'cors' });
+            clearTimeout(t);
+            if (resp.ok) {
+                ch.working = true;
+                workingCount++;
+            }
+        } catch(e) {
+            ch.working = false;
+        }
+        ch.checked = true;
+        checkedCount++;
+        
+        if (checkedCount % 10 === 0) {
+            const left = unchecked.length - checkedCount;
+            $('btnScan').innerHTML = `⏳ Ост: ${left} | +${workingCount}`;
+            renderList();
+        }
+    }
+
+    for (let i = 0; i < unchecked.length; i += CONCURRENCY) {
+        const chunk = unchecked.slice(i, i + CONCURRENCY);
+        await Promise.allSettled(chunk.map(checkChannel));
+    }
+
+    S.isScanning = false;
+    $('btnScan').innerHTML = `✅ Окончено`;
+    setTimeout(() => { $('btnScan').innerHTML = `🔍 Сканировать`; }, 3000);
+    renderCats(); renderList();
 }
 
 // ===== ОТРИСОВКА =====
 function renderCats() {
     $('categoryTabs').innerHTML = CATS.map(([id, label, ic]) => {
         const active = S.cat === id;
-        let cnt = id === 'Все' ? S.channels.length : id === 'Избранное' ? S.favs.size : S.channels.filter(c => c.category === id).length;
-        return `<button type="button" data-cat="${id}" class="shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 border cursor-pointer transition-colors ${active ? 'bg-blue-600 text-white border-blue-500' : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10'}"><span>${ic}</span><span>${label}</span><span class="opacity-60">${cnt}</span></button>`;
+        let cnt = id === 'Все' ? S.channels.length : id === 'Избранное' ? S.favs.size : S.channels.filter(c => {
+            if (id === 'Рабочие') return c.working === true;
+            return c.category === id;
+        }).length;
+        
+        return `<button type="button" data-cat="${id}" class="shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 border cursor-pointer transition-colors focusable ${active ? 'bg-blue-600 text-white border-blue-500' : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10'}"><span>${ic}</span><span>${label}</span><span class="opacity-60">${cnt}</span></button>`;
     }).join('');
 }
 
@@ -359,9 +632,23 @@ function filterChannels() {
     return S.channels.filter(c => {
         if (S.cat !== 'Все') {
             if (S.cat === 'Избранное') { if (!S.favs.has(c.id)) return false; }
+            else if (S.cat === 'Рабочие') { if (!c.working) return false; }
             else { if (c.category !== S.cat) return false; }
         }
+        
         if (q && !c.name.toLowerCase().includes(q)) return false;
+        
+        if (S.qualityFilter !== 'all') {
+            const fullStr = (c.name + ' ' + c.url).toLowerCase();
+            if (S.qualityFilter === '1080') {
+                if (!fullStr.includes('1080') && !fullStr.includes('fhd') && !fullStr.includes('hd')) return false;
+            } else if (S.qualityFilter === '720') {
+                if (!fullStr.includes('720') && !fullStr.includes('hd')) return false;
+            } else if (S.qualityFilter === 'sd') {
+                if (fullStr.includes('1080') || fullStr.includes('fhd') || fullStr.includes('hd') || fullStr.includes('720')) return false;
+            }
+        }
+        
         return true;
     });
 }
@@ -369,18 +656,33 @@ function filterChannels() {
 function cardHTML(c) {
     const isPlay = c.id === S.channels[S.idx]?.id;
     const isFav = S.favs.has(c.id);
+    const isVod = c.id.startsWith('vod-');
+    
     const logoContent = c.logo 
         ? `<img src="${c.logo}" class="w-full h-full object-contain" loading="lazy" onerror="this.style.display='none'; this.parentElement.textContent='${String(c.num).padStart(2,'0')}';">`
-        : String(c.num).padStart(2,'0');
-    return `<div data-cid="${c.id}" class="channel-card group p-2.5 rounded-2xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${isPlay ? 'bg-blue-600/20 border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]' : 'bg-white/5 hover:bg-white/10 border-white/5'}">
-        <div class="flex items-center gap-3 min-w-0">
-            <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-white font-bold text-sm shrink-0 border border-white/10 overflow-hidden p-1">${logoContent}</div>
-            <div class="min-w-0">
+        : (isVod ? '🍿' : String(c.num).padStart(2,'0'));
+    
+    let statusIcon = '';
+    if (c.status === 'loading') statusIcon = '<span class="text-yellow-400 text-xs ml-auto animate-pulse">⏳</span>';
+    else if (c.working) statusIcon = '<span class="text-emerald-400 text-xs ml-auto">✅</span>';
+    else if (c.checked) statusIcon = '<span class="text-red-400 text-xs ml-auto">❌</span>';
+
+    let borderClass = '';
+    if (isPlay) borderClass = 'bg-blue-600/20 border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]';
+    else if (c.working) borderClass = 'bg-white/5 border-emerald-500/30 hover:bg-white/10';
+    else if (c.checked) borderClass = 'bg-white/5 border-red-500/20 hover:bg-white/10';
+    else borderClass = 'bg-white/5 border-white/5 hover:bg-white/10';
+
+    return `<div tabindex="0" data-cid="${c.id}" class="channel-card group p-2.5 rounded-2xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${borderClass}">
+        <div class="flex items-center gap-3 min-w-0 flex-1">
+            <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-white font-bold text-lg shrink-0 border border-white/10 overflow-hidden p-1">${logoContent}</div>
+            <div class="min-w-0 flex-1">
                 <div class="font-bold text-sm text-white truncate">${c.name}</div>
                 <div class="text-[11px] text-slate-400 mt-0.5">${c.category}</div>
             </div>
+            ${statusIcon}
         </div>
-        <button type="button" data-fav="${c.id}" class="fav-btn ${isFav ? 'active' : 'text-slate-500'} p-2 rounded-lg hover:bg-white/10 cursor-pointer shrink-0 transition-colors">
+        <button type="button" data-fav="${c.id}" class="fav-btn ${isFav ? 'active' : 'text-slate-500'} p-2 rounded-lg hover:bg-white/10 cursor-pointer shrink-0 transition-colors focusable">
             <svg class="w-4 h-4" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
         </button>
     </div>`;
@@ -392,22 +694,27 @@ function renderList() {
     if (filtered.length === 0) { container.innerHTML = '<div class="text-center py-10 text-slate-500 text-sm">Нет каналов</div>'; return; }
     const vis = filtered.slice(0, visible);
     let html = vis.map(cardHTML).join('');
-    if (vis.length < filtered.length) html += `<button data-action="more" class="w-full py-3 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 font-semibold text-sm cursor-pointer transition-colors">Показать ещё</button>`;
+    if (vis.length < filtered.length) html += `<button data-action="more" class="w-full py-3 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 font-semibold text-sm cursor-pointer transition-colors focusable">Показать ещё</button>`;
     requestAnimationFrame(() => { container.innerHTML = html; });
 }
 
-// ===== ВОСПРОИЗВЕДЕНИЕ И АВТО-ЗВУК =====
+// ===== ВОСПРОИЗВЕДЕНИЕ И СТАТУС =====
 function playChannel(idx) {
     if (idx < 0 || idx >= S.channels.length) return;
     const ch = S.channels[idx];
     S.idx = idx;
     
+    ch.status = 'loading';
+    renderList();
+    
     updateChannelUI(ch);
     
+    $('idleOverlay').classList.add('hidden');
     $('errorOverlay').classList.add('hidden');
     $('loaderOverlay').classList.remove('hidden');
     $('loaderText').textContent = `Загрузка: ${ch.name}`;
-    $('loaderSubText').textContent = 'Соединение...';
+    $('loaderSubText').textContent = 'Быстрое соединение...';
+    
     if (S.sidebar) toggleSidebar(false);
     
     if (S.hls) { try { S.hls.destroy(); } catch(e){} S.hls = null; }
@@ -415,14 +722,18 @@ function playChannel(idx) {
     video.removeAttribute('src');
     video.load();
 
+    if (loadTimeout) clearTimeout(loadTimeout);
+    loadTimeout = setTimeout(() => {
+        if (video.readyState < 2) handleFail(ch);
+    }, 8000); 
+
     const url = ch.url;
     const isDirect = /\.(mp3|aac|mp4|webm)(\?|$)/i.test(url);
 
     if (!isDirect && typeof Hls !== 'undefined' && Hls.isSupported()) {
         const hls = new Hls({
-            enableWorker: true, lowLatencyMode: true, backBufferLength: 10, maxBufferLength: 10,
-            manifestLoadingTimeOut: 5000, manifestLoadingMaxRetry: 1,
-            levelLoadingTimeOut: 5000, fragLoadingTimeOut: 6000,
+            enableWorker: true, lowLatencyMode: true, backBufferLength: 5, maxBufferLength: 10,
+            manifestLoadingTimeOut: 6000, manifestLoadingMaxRetry: 1,
             xhrSetup: x => { x.withCredentials = false; }
         });
         S.hls = hls;
@@ -446,35 +757,23 @@ function playChannel(idx) {
     } else {
         video.src = url;
         video.addEventListener('loadedmetadata', () => {
-            $('currentStreamResolution').textContent = 'Прямой';
+            $('currentStreamResolution').textContent = 'Прямой (MP4)';
             tryPlay();
         }, { once: true });
         video.addEventListener('error', () => handleFail(ch), { once: true });
     }
 }
 
-// ФУНКЦИЯ АВТО-ЗВУКА
 function tryPlay() {
-    // 1. Снимаем mute (пробуем включить со звуком)
     video.muted = false; 
     updateMute();
-    
     const p = video.play();
     if (p && p.catch) {
         p.catch(() => {
-            // 2. Если браузер заблокировал звук, включаем mute и запускаем
             video.muted = true; 
             updateMute();
             video.play().catch(() => {});
             showToast('Нажмите на экран для включения звука');
-            
-            // 3. Включаем звук при первом клике куда угодно
-            const unmute = () => {
-                video.muted = false;
-                updateMute();
-                document.removeEventListener('click', unmute);
-            };
-            document.addEventListener('click', unmute);
         });
     }
 }
@@ -487,7 +786,7 @@ function updateChannelUI(ch) {
     if (ch.logo) {
         logoEl.innerHTML = `<img src="${ch.logo}" class="w-full h-full object-contain" onerror="this.style.display='none'; this.parentElement.textContent='${ch.num}';">`;
     } else {
-        logoEl.innerHTML = String(ch.num);
+        logoEl.innerHTML = ch.id.startsWith('vod-') ? '🍿' : String(ch.num);
     }
 }
 
@@ -503,6 +802,12 @@ function updateResolution(levels) {
 }
 
 function handleFail(ch) {
+    if (loadTimeout) clearTimeout(loadTimeout);
+    ch.status = 'error';
+    ch.working = false;
+    ch.checked = true;
+    renderList();
+    
     $('loaderOverlay').classList.add('hidden');
     $('errorOverlay').classList.remove('hidden');
     $('errorDetails').textContent = `«${ch.name}» недоступен. Попробуйте другой.`;
@@ -514,11 +819,11 @@ function populateQualityMenu(levels) {
     list.innerHTML = levels.map((l, i) => {
         const h = l.height || 0;
         const isActive = S.hls && S.hls.currentLevel === i;
-        return `<button type="button" data-level="${i}" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-white/10'}">${h ? h + 'p' : '#' + (i+1)} ${l.bitrate ? '• ' + (l.bitrate / 1e6).toFixed(1) + ' Mbps' : ''}</button>`;
+        return `<button type="button" data-level="${i}" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors focusable ${isActive ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-white/10'}">${h ? h + 'p' : '#' + (i+1)} ${l.bitrate ? '• ' + (l.bitrate / 1e6).toFixed(1) + ' Mbps' : ''}</button>`;
     }).join('');
 }
 
-// ===== СОБЫТИЯ =====
+// ===== СОБЫТИЯ UI =====
 $('categoryTabs').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-cat]');
     if (!btn) return;
@@ -545,11 +850,23 @@ container.addEventListener('click', (e) => {
     }
 });
 
-// Загрузка избранного
+// Обработчик поиска по названию
+$('channelSearchInput').addEventListener('input', debounce(e => { 
+    S.q = e.target.value; 
+    visible = PAGE; 
+    renderList(); 
+}, 200));
+
+// Обработчик фильтра по качеству
+$('qualityFilter').addEventListener('change', (e) => {
+    S.qualityFilter = e.target.value;
+    visible = PAGE;
+    renderList();
+});
+
 const savedFavs = ls.get('ru_favs', []);
 if (Array.isArray(savedFavs)) S.favs = new Set(savedFavs);
 
-// Управление
 function toggleSidebar(force) {
     S.sidebar = typeof force === 'boolean' ? force : !S.sidebar;
     if (S.sidebar) $('channelsSidebar').classList.remove('-translate-x-full','hidden');
@@ -567,28 +884,42 @@ function showToast(msg) {
 }
 
 function showOsd() {
+    if (S.isMaximized) return;
     $('osdWrapper').classList.remove('osd-hidden');
     $('osdWrapper').classList.add('osd-visible');
     clearTimeout(S.osdT);
     S.osdT = setTimeout(() => { if (!video.paused) { $('osdWrapper').classList.add('osd-hidden'); $('osdWrapper').classList.remove('osd-visible'); } }, 5000);
 }
 
-// Привязка кнопок
 $('toggleSidebarBtn').onclick = () => toggleSidebar();
 $('closeSidebarBtn').onclick = () => toggleSidebar(false);
 $('openSidebarFromErrorBtn').onclick = () => { $('errorOverlay').classList.add('hidden'); toggleSidebar(true); };
-$('prevChannelBtn').onclick = () => playChannel(S.idx - 1);
-$('nextChannelBtn').onclick = () => playChannel(S.idx + 1);
-$('nextChannelErrorBtn').onclick = () => { $('errorOverlay').classList.add('hidden'); playChannel(S.idx + 1); };
-$('playPauseBtn').onclick = () => { video.paused ? video.play() : video.pause(); };
+$('prevChannelBtn').onclick = () => { if(S.idx !== -1) playChannel(S.idx - 1); };
+$('nextChannelBtn').onclick = () => { if(S.idx !== -1) playChannel(S.idx + 1); };
+$('nextChannelErrorBtn').onclick = () => { $('errorOverlay').classList.add('hidden'); if(S.idx !== -1) playChannel(S.idx + 1); };
+$('playPauseBtn').onclick = () => { if(video.src) video.paused ? video.play() : video.pause(); };
 $('muteToggleBtn').onclick = toggleMute;
-$('fullscreenBtn').onclick = () => { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {}); else document.exitFullscreen().catch(() => {}); };
-$('channelSearchInput').addEventListener('input', debounce(e => { S.q = e.target.value; visible = PAGE; renderList(); }, 200));
+$('fullscreenBtn').onclick = toggleFullscreen;
+
+$('btnScan').onclick = () => {
+    if (S.isScanning) {
+        S.isScanning = false;
+        $('btnScan').innerHTML = `🔍 Сканировать`;
+    } else {
+        startScan();
+    }
+};
 
 $('openQualityMenuBtn').onclick = () => {
     const menu = $('qualityMenu');
+    if (!S.hls) {
+        showToast('Сначала включите канал');
+        return;
+    }
     menu.classList.toggle('hidden');
-    if (!menu.classList.contains('hidden') && S.hls && S.hls.levels) populateQualityMenu(S.hls.levels);
+    if (!menu.classList.contains('hidden') && S.hls && S.hls.levels) {
+        populateQualityMenu(S.hls.levels);
+    }
 };
 
 $('qualityList').addEventListener('click', (e) => {
@@ -596,25 +927,42 @@ $('qualityList').addEventListener('click', (e) => {
     if (!btn || !S.hls) return;
     S.hls.currentLevel = parseInt(btn.dataset.level, 10);
     $('qualityMenu').classList.add('hidden');
+    showToast(`Качество: ${btn.textContent.trim()}`);
 });
 
-// ===== ИНФО МОДАЛКА =====
-$('openInfoBtn').onclick = () => {
-    // Определяем регион и время
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    $('infoRegion').textContent = tz || 'Неизвестно';
-    
-    const now = new Date();
-    $('infoTime').textContent = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    
-    $('infoModal').classList.remove('hidden');
+$('openSettingsBtn').onclick = () => $('settingsModal').classList.remove('hidden');
+$('closeSettingsBtn').onclick = () => $('settingsModal').classList.add('hidden');
+$('sliderBrightness').oninput = (e) => { S.videoSettings.brightness = e.target.value; $('valBrightness').textContent = e.target.value + '%'; applyVideoFilters(); };
+$('sliderContrast').oninput = (e) => { S.videoSettings.contrast = e.target.value; $('valContrast').textContent = e.target.value + '%'; applyVideoFilters(); };
+$('sliderSaturation').oninput = (e) => { S.videoSettings.saturation = e.target.value; $('valSaturation').textContent = e.target.value + '%'; applyVideoFilters(); };
+
+$('btnResetVideo').onclick = () => {
+    S.videoSettings = { brightness: 100, contrast: 100, saturation: 100 };
+    loadVideoSettings();
+    saveVideoSettings();
 };
 
+$('btnSaveVideo').onclick = () => {
+    saveVideoSettings();
+    $('settingsModal').classList.add('hidden');
+    showToast('Настройки видео сохранены');
+};
+
+$('openInfoBtn').onclick = () => {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    $('infoRegion').textContent = tz || 'Неизвестно';
+    const now = new Date();
+    $('infoTime').textContent = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    $('infoModal').classList.remove('hidden');
+};
 $('closeInfoBtn').onclick = () => $('infoModal').classList.add('hidden');
 $('closeInfoFooterBtn').onclick = () => $('infoModal').classList.add('hidden');
 
-// Видео события
 video.addEventListener('playing', () => {
+    if (loadTimeout) clearTimeout(loadTimeout);
+    const ch = S.channels[S.idx];
+    if (ch) { ch.working = true; ch.checked = true; ch.status = 'ok'; renderList(); }
+    
     $('loaderOverlay').classList.add('hidden');
     $('errorOverlay').classList.add('hidden');
     $('pauseIcon').classList.remove('hidden');
@@ -627,14 +975,12 @@ video.addEventListener('pause', () => {
     showOsd();
 });
 
-// Глобальные события
 window.addEventListener('mousemove', showOsd);
 window.addEventListener('touchstart', showOsd);
 window.addEventListener('keydown', showOsd);
 
-// Старт
-if (innerWidth < 640) toggleSidebar(false);
-loadPlaylists();
+loadVideoSettings(); 
+initPlaylists();
 </script>
 </body>
 </html>
